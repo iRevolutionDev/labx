@@ -41,6 +41,7 @@ android {
 }
 
 dependencies {
+    // Editor
     implementation(platform(libs.bom))
     implementation(libs.editor)
     implementation(libs.editor.lsp)
@@ -48,6 +49,19 @@ dependencies {
     implementation(libs.language.java)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
+    // Icon Pack
+    implementation(libs.composeIcons.simpleIcons)
+    implementation(libs.composeIcons.fontAwesome)
+    implementation(libs.composeIcons.feather)
+    implementation(libs.composeIcons.cssGg)
+    implementation(libs.composeIcons.evaIcons)
+    implementation(libs.composeIcons.tablerIcons)
+    implementation(libs.composeIcons.linea)
+    implementation(libs.composeIcons.octicons)
+    implementation(libs.composeIcons.lineAwesome)
+
+    // Compose
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
