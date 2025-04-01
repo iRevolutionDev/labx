@@ -43,8 +43,11 @@ import compose.icons.fontawesomeicons.solid.Indent
 import compose.icons.fontawesomeicons.solid.Redo
 import compose.icons.fontawesomeicons.solid.Save
 import compose.icons.fontawesomeicons.solid.Undo
+import io.github.rosemoe.sora.event.ContentChangeEvent
+import io.github.rosemoe.sora.event.SelectionChangeEvent
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
+import io.github.rosemoe.sora.widget.subscribeEvent
 import software.revolution.labx.R
 import software.revolution.labx.model.EditorState
 import software.revolution.labx.ui.theme.BackgroundDark
@@ -117,25 +120,23 @@ fun EditorComponent(
                     ).also {
                         editor = it
 
-//                        it.setTextChangedListener { _, _ ->
-//                            onEditorStateChange(
-//                                editorState.copy(
-//                                    content = it.text.toString(),
-//                                    isModified = true,
-//                                    cursorPosition = it.cursor.leftLine
-//                                )
-//                            )
-//
-//                            cursorPosition =
-//                                "Line: ${it.cursor.leftLine + 1}, Col: ${it.cursor.leftColumn + 1}"
-//                            wordCount = it.text.toString().split(Regex("\\s+"))
-//                                .count { word -> word.isNotEmpty() }
-//                        }
-//
-//                        it.setOnSelectionChangedListener { _, _, _ ->
-//                            cursorPosition =
-//                                "Line: ${it.cursor.leftLine + 1}, Col: ${it.cursor.leftColumn + 1}"
-//                        }
+                        it.subscribeEvent<ContentChangeEvent> { event, unsubsribe ->
+                            onEditorStateChange(
+                                editorState.copy(
+                                    content = it.text.toString(),
+                                    isModified = true,
+                                    cursorPosition = it.cursor.leftLine
+                                )
+                            )
+
+                            wordCount = it.text.toString().split(Regex("\\s+"))
+                                .count { word -> word.isNotEmpty() }
+                        }
+
+                        it.subscribeEvent<SelectionChangeEvent> { event, unsubscribe ->
+                            cursorPosition =
+                                "Line: ${it.cursor.leftLine + 1}, Col: ${it.cursor.leftColumn + 1}"
+                        }
                     }
                 },
                 update = { view ->
