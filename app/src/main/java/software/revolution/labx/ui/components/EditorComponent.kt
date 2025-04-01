@@ -50,6 +50,7 @@ import compose.icons.fontawesomeicons.solid.Save
 import compose.icons.fontawesomeicons.solid.Undo
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.event.SelectionChangeEvent
+import io.github.rosemoe.sora.langs.java.JavaLanguage
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import io.github.rosemoe.sora.widget.subscribeEvent
@@ -88,6 +89,16 @@ fun EditorComponent(
 
     val fileExtension by remember(currentFile) {
         derivedStateOf { currentFile?.extension?.uppercase() ?: "TXT" }
+    }
+
+    LaunchedEffect(currentFile?.extension) {
+        editor?.let { currentEditor ->
+            val language = when (currentFile?.extension?.lowercase()) {
+                "java" -> JavaLanguage()
+                else -> null
+            }
+            language?.let { currentEditor.setEditorLanguage(it) }
+        }
     }
 
     LaunchedEffect(editorState) {
@@ -159,7 +170,8 @@ fun EditorComponent(
                         ctx,
                         editorState.content,
                         isDarkTheme,
-                        fontSize
+                        fontSize,
+                        currentFile?.extension // Pass the file extension to the editor view
                     ).also { newEditor ->
                         editor = newEditor
 
@@ -381,7 +393,8 @@ private fun createEditorView(
     context: Context,
     initialText: String,
     isDarkTheme: Boolean,
-    fontSize: Float = 14f
+    fontSize: Float = 14f,
+    fileExtension: String? = null
 ): CodeEditor {
     val editor = CodeEditor(context)
 
@@ -392,6 +405,13 @@ private fun createEditorView(
 
     applyTheme(editor, isDarkTheme)
     editor.setText(initialText)
+
+    val language = when (fileExtension?.lowercase()) {
+        "java" -> JavaLanguage()
+        else -> null
+    }
+
+    editor.setEditorLanguage(language)
 
     editor.isWordwrap = true
     editor.nonPrintablePaintingFlags = 0
