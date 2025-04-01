@@ -183,7 +183,6 @@ fun MainEditorScreen(
     fun saveFile() {
         editorState.currentFile?.let { fileItem ->
             try {
-                // Use buffered writer for memory-efficient file saving
                 fileItem.file.bufferedWriter().use { writer ->
                     writer.write(editorState.content)
                 }
@@ -467,19 +466,23 @@ fun MainEditorScreen(
                         EditorComponent(
                             editorState = editorState,
                             onEditorStateChange = { newState ->
-                                editorState = newState
+                                val updatedState = if (newState.currentFile == null && editorState.currentFile != null) {
+                                    newState.copy(currentFile = editorState.currentFile)
+                                } else {
+                                    newState
+                                }
+                                
+                                editorState = updatedState
 
-                                if (preferences.autoSave && newState.isModified) {
-                                    newState.currentFile?.let { fileItem ->
-                                        try {
-                                            fileItem.file.writeText(newState.content)
-                                            editorState = newState.copy(isModified = false)
-                                        } catch (e: Exception) {
-                                            outputMessages = outputMessages + OutputMessage(
-                                                message = context.getString(R.string.error_autosave, e.message),
-                                                type = OutputType.WARNING
-                                            )
-                                        }
+                                if (preferences.autoSave && updatedState.isModified && updatedState.currentFile != null) {
+                                    try {
+                                        updatedState.currentFile.file.writeText(updatedState.content)
+                                        editorState = updatedState.copy(isModified = false)
+                                    } catch (e: Exception) {
+                                        outputMessages = outputMessages + OutputMessage(
+                                            message = context.getString(R.string.error_autosave, e.message),
+                                            type = OutputType.WARNING
+                                        )
                                     }
                                 }
                             },

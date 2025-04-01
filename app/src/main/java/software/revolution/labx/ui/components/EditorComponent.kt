@@ -23,6 +23,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -34,9 +37,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import compose.icons.FontAwesomeIcons
 import compose.icons.fontawesomeicons.Solid
 import compose.icons.fontawesomeicons.solid.Indent
@@ -48,6 +54,9 @@ import io.github.rosemoe.sora.event.SelectionChangeEvent
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import io.github.rosemoe.sora.widget.subscribeEvent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import software.revolution.labx.R
 import software.revolution.labx.model.EditorState
 import software.revolution.labx.ui.theme.BackgroundDark
@@ -70,13 +79,48 @@ fun EditorComponent(
     wordWrap: Boolean = true
 ) {
     LocalContext.current
-    rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
     var editor by remember { mutableStateOf<CodeEditor?>(null) }
 
-    var cursorPosition by remember { mutableStateOf("Line: 1, Col: 1") }
+    var cursorPosition by remember { mutableStateOf("Linha: 1, Col: 1") }
     var wordCount by remember { mutableIntStateOf(0) }
 
-    val languageExtension = editorState.currentFile?.extension?.lowercase() ?: "txt"
+    val currentFile = remember(editorState.currentFile) { editorState.currentFile }
+
+    val fileExtension by remember(currentFile) {
+        derivedStateOf { currentFile?.extension?.uppercase() ?: "TXT" }
+    }
+
+    LaunchedEffect(editorState) {
+        if (editorState.currentFile == null && currentFile != null) {
+            onEditorStateChange(editorState.copy(currentFile = currentFile))
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                editor?.let { currentEditor ->
+                    val currentContent = currentEditor.text.toString()
+                    if (currentContent != editorState.content) {
+                        onEditorStateChange(
+                            editorState.copy(
+                                content = currentContent,
+                                isModified = true,
+                                currentFile = editorState.currentFile ?: currentFile
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -90,7 +134,8 @@ fun EditorComponent(
                         onEditorStateChange(
                             editorState.copy(
                                 content = text.toString(),
-                                isModified = false
+                                isModified = false,
+                                currentFile = editorState.currentFile ?: currentFile
                             )
                         )
                     }
@@ -114,46 +159,63 @@ fun EditorComponent(
                     createEditorView(
                         ctx,
                         editorState.content,
-                        languageExtension,
                         isDarkTheme,
                         fontSize
-                    ).also {
-                        editor = it
+                    ).also { newEditor ->
+                        editor = newEditor
 
-                        it.subscribeEvent<ContentChangeEvent> { event, unsubsribe ->
-                            onEditorStateChange(
-                                editorState.copy(
-                                    content = it.text.toString(),
-                                    isModified = true,
-                                    cursorPosition = it.cursor.leftLine
-                                )
-                            )
+                        newEditor.subscribeEvent<ContentChangeEvent> { _, _ ->
+                            val content = newEditor.text.toString()
+                            wordCount = content.split(Regex("\\s+")).count { it.isNotEmpty() }
 
-                            wordCount = it.text.toString().split(Regex("\\s+"))
-                                .count { word -> word.isNotEmpty() }
+                            coroutineScope.launch(Dispatchers.Main) {
+                                val fileToUse = editorState.currentFile ?: currentFile
+                                withContext(Dispatchers.Main) {
+                                    onEditorStateChange(
+                                        editorState.copy(
+                                            content = content,
+                                            isModified = true,
+                                            currentFile = fileToUse
+                                        )
+                                    )
+                                }
+                            }
                         }
 
-                        it.subscribeEvent<SelectionChangeEvent> { event, unsubscribe ->
+                        newEditor.subscribeEvent<SelectionChangeEvent> { _, _ ->
+                            val cursor = newEditor.cursor
                             cursorPosition =
-                                "Line: ${it.cursor.leftLine + 1}, Col: ${it.cursor.leftColumn + 1}"
+                                "Line: ${cursor.leftLine + 1}, Col: ${cursor.leftColumn + 1}"
                         }
                     }
                 },
                 update = { view ->
                     if (view.text.toString() != editorState.content) {
+                        val line = view.cursor.leftLine
+                        val col = view.cursor.leftColumn
+
                         view.setText(editorState.content)
+
+                        try {
+                            if (line < view.lineCount) {
+                                view.setSelection(
+                                    line,
+                                    col.coerceAtMost(view.text.getColumnCount(line))
+                                )
+                            }
+                        } catch (_: Exception) {
+                        }
                     }
 
                     view.isLineNumberEnabled = showLineNumbers
                     view.isWordwrap = wordWrap
                     view.setTextSize(fontSize)
-
                     applyTheme(view, isDarkTheme)
                 },
                 modifier = Modifier.fillMaxSize()
             )
 
-            if (editorState.currentFile == null) {
+            if (editorState.currentFile == null && currentFile == null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -175,7 +237,7 @@ fun EditorComponent(
         EditorStatusBar(
             cursorPosition = cursorPosition,
             wordCount = wordCount,
-            fileType = editorState.currentFile?.extension?.uppercase() ?: "TXT",
+            fileType = fileExtension,
             isDarkTheme = isDarkTheme
         )
     }
@@ -191,7 +253,6 @@ private fun EditorToolbar(
     isModified: Boolean,
     isDarkTheme: Boolean
 ) {
-
     Surface(
         color = if (isDarkTheme) SurfaceDark else SurfaceLight,
         tonalElevation = 2.dp,
@@ -321,7 +382,6 @@ private fun EditorStatusBar(
 private fun createEditorView(
     context: Context,
     initialText: String,
-    languageExtension: String,
     isDarkTheme: Boolean,
     fontSize: Float = 14f
 ): CodeEditor {
