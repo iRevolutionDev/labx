@@ -143,11 +143,15 @@ fun TabItem(
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = tab.file.name,
+                text = if (tab.isModified) "${tab.file.name} *" else tab.file.name,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = if (isDarkTheme) Color.White else Color.Black
+                color = if (tab.isModified) {
+                    PrimaryLight
+                } else {
+                    if (isDarkTheme) Color.White else Color.Black
+                }
             )
 
             Spacer(modifier = Modifier.width(8.dp))

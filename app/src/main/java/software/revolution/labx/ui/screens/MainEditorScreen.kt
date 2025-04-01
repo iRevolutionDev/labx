@@ -99,6 +99,8 @@ fun MainEditorScreen(
     var isFileExplorerVisible by remember { mutableStateOf(true) }
     var isFilePickerDialogVisible by remember { mutableStateOf(false) }
     var snackbarHostState = remember { SnackbarHostState() }
+    
+    var editorStateMap by remember { mutableStateOf<Map<String, EditorState>>(emptyMap()) }
 
     val rootPath = Environment.getExternalStorageDirectory().absolutePath
 
@@ -106,6 +108,21 @@ fun MainEditorScreen(
 
     fun loadFile(fileItem: FileItem) {
         try {
+            val cachedState = editorStateMap[fileItem.path]
+            if (cachedState != null) {
+                editorState = cachedState
+                
+                openTabs = openTabs.map { tab -> 
+                    if (tab.file.path == fileItem.path) {
+                        tab.copy(isActive = true, isModified = cachedState.isModified)
+                    } else {
+                        tab.copy(isActive = false)
+                    }
+                }
+                
+                return
+            }
+            
             val fileSizeInMB = fileItem.size / (1024 * 1024)
             val MAX_SAFE_SIZE_MB = 5 // Limit files to 5MB to avoid memory issues
             
@@ -137,12 +154,14 @@ fun MainEditorScreen(
                 }
             }
 
-            editorState = EditorState(
+            val newEditorState = EditorState(
                 currentFile = fileItem,
                 content = fileContent.toString(),
                 isModified = false,
                 language = fileItem.extension
             )
+            
+            editorState = newEditorState
             
             val newTab = EditorTab(file = fileItem, isActive = true)
             openTabs = openTabs.map { it.copy(isActive = false) }.toMutableList().also {
@@ -188,6 +207,15 @@ fun MainEditorScreen(
                 }
 
                 editorState = editorState.copy(isModified = false)
+                editorStateMap = editorStateMap + (fileItem.path to editorState)
+                
+                openTabs = openTabs.map { tab ->
+                    if (tab.file.path == fileItem.path) {
+                        tab.copy(isModified = false)
+                    } else {
+                        tab
+                    }
+                }
 
                 outputMessages = outputMessages + OutputMessage(
                     message = context.getString(R.string.file_saved, fileItem.name),
@@ -473,11 +501,32 @@ fun MainEditorScreen(
                                 }
                                 
                                 editorState = updatedState
+                                
+                                if (updatedState.currentFile != null) {
+                                    editorStateMap = editorStateMap + (updatedState.currentFile.path to updatedState)
+                                    
+                                    openTabs = openTabs.map { tab ->
+                                        if (tab.file.path == updatedState.currentFile.path) {
+                                            tab.copy(isModified = updatedState.isModified)
+                                        } else {
+                                            tab
+                                        }
+                                    }
+                                }
 
                                 if (preferences.autoSave && updatedState.isModified && updatedState.currentFile != null) {
                                     try {
                                         updatedState.currentFile.file.writeText(updatedState.content)
                                         editorState = updatedState.copy(isModified = false)
+                                        
+                                        editorStateMap = editorStateMap + (updatedState.currentFile.path to editorState)
+                                        openTabs = openTabs.map { tab ->
+                                            if (tab.file.path == updatedState.currentFile.path) {
+                                                tab.copy(isModified = false)
+                                            } else {
+                                                tab
+                                            }
+                                        }
                                     } catch (e: Exception) {
                                         outputMessages = outputMessages + OutputMessage(
                                             message = context.getString(R.string.error_autosave, e.message),

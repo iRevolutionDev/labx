@@ -35,7 +35,8 @@ data class EditorState(
  */
 data class EditorTab(
     val file: FileItem,
-    val isActive: Boolean = false
+    val isActive: Boolean = false,
+    val isModified: Boolean = false
 )
 
 /**
