@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">labx</string>
-    
+
+    <!-- Splash Screen -->
+    <string name="splash_subtitle">Advanced Android Processing IDE</string>
+
     <!-- Main Editor Screen -->
     <string name="file_too_large">File too large (%1$dMB). The limit is %2$dMB to avoid memory issues.</string>
     <string name="file_too_large_snackbar">File too large to be opened in the editor</string>
@@ -31,7 +34,7 @@
     <string name="file_picker_dialog_message_1">Here would be integrated a file selection interface.</string>
     <string name="file_picker_dialog_message_2">You could create a new file or open an existing one.</string>
     <string name="ok">OK</string>
-    
+
     <!-- Editor Component -->
     <string name="select_file_to_edit">Select a file to edit</string>
     <string name="save">Save</string>
@@ -41,12 +44,12 @@
     <string name="find_replace">Find/Replace</string>
     <string name="cursor_position">Line: %1$d, Col: %2$d</string>
     <string name="word_count">Words: %1$d</string>
-    
+
     <!-- Output Panel -->
     <string name="output">Output</string>
     <string name="clear_output">Clear output</string>
     <string name="no_output_messages">No output messages</string>
-    
+
     <!-- Settings Screen -->
     <string name="settings_title">Editor Settings</string>
     <string name="back">Back</string>
@@ -64,4 +67,28 @@
     <string name="auto_save_subtitle">Automatically saves the file when making changes</string>
     <string name="save_settings">Save settings</string>
     <string name="selected">Selected</string>
+
+    <!-- File Explorer -->
+    <string name="explorer_title">Explorer</string>
+    <string name="close_search">Close search</string>
+    <string name="search_files">Search files</string>
+    <string name="refresh">Refresh</string>
+    <string name="search_files_placeholder">Search files...</string>
+    <string name="search_icon">Search icon</string>
+    <string name="go_up">Go up</string>
+    <string name="no_matching_files">No matching files</string>
+    <string name="no_files_found">No files found</string>
+    <string name="create_new_file">Create new file</string>
+    <string name="file_name">File name</string>
+    <string name="create">Create</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- File Item Component -->
+    <string name="folder_icon">Folder icon</string>
+    <string name="file_icon">File icon</string>
+    <string name="delete_file">Delete file</string>
+
+    <!-- Tab Bar -->
+    <string name="file_type_icon">File type icon</string>
+    <string name="close_tab">Close tab</string>
 </resources>

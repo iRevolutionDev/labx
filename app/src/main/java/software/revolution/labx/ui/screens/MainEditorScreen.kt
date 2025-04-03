@@ -1,6 +1,5 @@
 package software.revolution.labx.ui.screens
 
-import android.os.Environment
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -47,10 +46,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +59,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.FontAwesomeIcons
 import compose.icons.TablerIcons
 import compose.icons.fontawesomeicons.Regular
@@ -69,504 +72,421 @@ import compose.icons.tablericons.Folder
 import compose.icons.tablericons.FolderX
 import kotlinx.coroutines.launch
 import software.revolution.labx.R
-import software.revolution.labx.model.EditorState
-import software.revolution.labx.model.EditorTab
-import software.revolution.labx.model.FileItem
-import software.revolution.labx.model.OutputMessage
-import software.revolution.labx.model.OutputType
+import software.revolution.labx.domain.model.FileItem
+import software.revolution.labx.domain.model.OutputType
+import software.revolution.labx.presentation.viewmodel.EditorViewModel
+import software.revolution.labx.presentation.viewmodel.FileExplorerViewModel
 import software.revolution.labx.ui.components.EditorComponent
+import software.revolution.labx.ui.components.EditorTab
 import software.revolution.labx.ui.components.FileExplorer
 import software.revolution.labx.ui.components.OutputPanel
 import software.revolution.labx.ui.components.TabBar
-import java.io.IOException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainEditorScreen(
-    preferences: EditorPreferences = EditorPreferences(),
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    editorViewModel: EditorViewModel = hiltViewModel(),
+    fileExplorerViewModel: FileExplorerViewModel = hiltViewModel()
 ) {
-    val isDarkTheme = preferences.isDarkMode
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
+    LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    var editorState by remember {
-        mutableStateOf(EditorState())
-    }
-    var openTabs by remember { mutableStateOf<List<EditorTab>>(emptyList()) }
-    var outputMessages by remember { mutableStateOf<List<OutputMessage>>(emptyList()) }
-    var isOutputPanelVisible by remember { mutableStateOf(false) }
-    var isFileExplorerVisible by remember { mutableStateOf(true) }
-    var isFilePickerDialogVisible by remember { mutableStateOf(false) }
-    var snackbarHostState = remember { SnackbarHostState() }
-    
-    var editorStateMap by remember { mutableStateOf<Map<String, EditorState>>(emptyMap()) }
+    val editorPreferences by editorViewModel.editorPreferences.collectAsStateWithLifecycle(null)
+    val editorState by editorViewModel.editorState.collectAsStateWithLifecycle()
+    val outputMessages by editorViewModel.outputMessages.collectAsStateWithLifecycle()
 
-    val rootPath = Environment.getExternalStorageDirectory().absolutePath
+    val currentDirectory by fileExplorerViewModel.currentDirectory.collectAsStateWithLifecycle()
+    val files by fileExplorerViewModel.files.collectAsStateWithLifecycle()
+    val fileExplorerError by fileExplorerViewModel.error.collectAsStateWithLifecycle()
+    val fileExplorerLoading by fileExplorerViewModel.isLoading.collectAsStateWithLifecycle()
 
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var openTabs by rememberSaveable { mutableStateOf<List<EditorTab>>(emptyList()) }
+    var isOutputPanelVisible by rememberSaveable { mutableStateOf(false) }
+    var isFileExplorerVisible by rememberSaveable { mutableStateOf(true) }
+    var isFilePickerDialogVisible by rememberSaveable { mutableStateOf(false) }
 
-    fun loadFile(fileItem: FileItem) {
-        try {
-            val cachedState = editorStateMap[fileItem.path]
-            if (cachedState != null) {
-                editorState = cachedState
-                
-                openTabs = openTabs.map { tab -> 
-                    if (tab.file.path == fileItem.path) {
-                        tab.copy(isActive = true, isModified = cachedState.isModified)
-                    } else {
-                        tab.copy(isActive = false)
-                    }
-                }
-                
-                return
-            }
-            
-            val fileSizeInMB = fileItem.size / (1024 * 1024)
-            val MAX_SAFE_SIZE_MB = 5 // Limit files to 5MB to avoid memory issues
-            
-            if (fileSizeInMB > MAX_SAFE_SIZE_MB) {
-                outputMessages = outputMessages + OutputMessage(
-                    message = context.getString(R.string.file_too_large, fileSizeInMB, MAX_SAFE_SIZE_MB),
-                    type = OutputType.WARNING
-                )
-                
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = context.getString(R.string.file_too_large_snackbar),
-                        duration = SnackbarDuration.Long
-                    )
-                }
-                return
-            }
-            
-            val fileContent = StringBuilder()
-            fileItem.file.bufferedReader().use { reader ->
-                val buffer = CharArray(8192)
-                var charsRead: Int
-                while (reader.read(buffer).also { charsRead = it } != -1) {
-                    fileContent.append(buffer, 0, charsRead)
-                    
-                    if (fileContent.length > MAX_SAFE_SIZE_MB * 1024 * 1024) {
-                        throw OutOfMemoryError(context.getString(R.string.file_too_large))
-                    }
-                }
-            }
-
-            val newEditorState = EditorState(
-                currentFile = fileItem,
-                content = fileContent.toString(),
-                isModified = false,
-                language = fileItem.extension
-            )
-            
-            editorState = newEditorState
-            
-            val newTab = EditorTab(file = fileItem, isActive = true)
-            openTabs = openTabs.map { it.copy(isActive = false) }.toMutableList().also {
-                if (!it.any { tab -> tab.file.path == fileItem.path }) {
-                    it.add(newTab)
-                } else {
-                    val index = it.indexOfFirst { tab -> tab.file.path == fileItem.path }
-                    it[index] = it[index].copy(isActive = true)
-                }
-            }
-
-            outputMessages = outputMessages + OutputMessage(
-                message = context.getString(R.string.file_loaded, fileItem.name),
-                type = OutputType.INFO
-            )
-
-            coroutineScope.launch {
+    LaunchedEffect(fileExplorerError) {
+        fileExplorerError?.let { error ->
+            editorViewModel.addOutputMessage(error, OutputType.ERROR)
+            scope.launch {
                 snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.file_loaded, fileItem.name),
+                    message = error,
                     duration = SnackbarDuration.Short
                 )
             }
-        } catch (e: IOException) {
-            outputMessages = outputMessages + OutputMessage(
-                message = context.getString(R.string.error_loading_file, e.message),
-                type = OutputType.ERROR
-            )
-
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.error_loading_file_snackbar),
-                    duration = SnackbarDuration.Long
-                )
-            }
+            fileExplorerViewModel.clearError()
         }
     }
 
-    fun saveFile() {
-        editorState.currentFile?.let { fileItem ->
-            try {
-                fileItem.file.bufferedWriter().use { writer ->
-                    writer.write(editorState.content)
+    fun loadFile(fileItem: FileItem) {
+        editorViewModel.openFile(fileItem)
+
+        val existingTab = openTabs.find { it.file.path == fileItem.path }
+        if (existingTab != null) {
+            openTabs = openTabs.map { tab ->
+                if (tab.file.path == fileItem.path) {
+                    tab.copy(isActive = true)
+                } else {
+                    tab.copy(isActive = false)
                 }
+            }
+        } else {
+            val newTab = EditorTab(file = fileItem, isActive = true)
+            openTabs = openTabs.map { it.copy(isActive = false) } + newTab
+        }
+    }
 
-                editorState = editorState.copy(isModified = false)
-                editorStateMap = editorStateMap + (fileItem.path to editorState)
-                
-                openTabs = openTabs.map { tab ->
-                    if (tab.file.path == fileItem.path) {
-                        tab.copy(isModified = false)
-                    } else {
-                        tab
-                    }
-                }
+    fun saveCurrentFile() {
+        editorViewModel.saveCurrentFile()
 
-                outputMessages = outputMessages + OutputMessage(
-                    message = context.getString(R.string.file_saved, fileItem.name),
-                    type = OutputType.SUCCESS
-                )
-
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = context.getString(R.string.file_saved_snackbar),
-                        duration = SnackbarDuration.Short
-                    )
-                }
-
-                if (preferences.autoSave) {
-                    outputMessages = outputMessages + OutputMessage(
-                        message = context.getString(R.string.autosave_enabled),
-                        type = OutputType.INFO
-                    )
-                }
-            } catch (e: IOException) {
-                outputMessages = outputMessages + OutputMessage(
-                    message = context.getString(R.string.error_saving_file, e.message),
-                    type = OutputType.ERROR
-                )
-
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = context.getString(R.string.error_saving_file_snackbar),
-                        duration = SnackbarDuration.Long
-                    )
+        editorState.currentFile?.let { currentFile ->
+            openTabs = openTabs.map { tab ->
+                if (tab.file.path == currentFile.path) {
+                    tab.copy(isModified = false)
+                } else {
+                    tab
                 }
             }
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier
-                    .width(300.dp)
-                    .fillMaxHeight()
-            ) {
-                Text(
-                    text = stringResource(R.string.title_app),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp)
-                )
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-                HorizontalDivider()
+    editorPreferences?.let { preferences ->
+        val isDarkTheme = preferences.isDarkMode
 
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.menu_settings)) },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.menu_settings)) },
-                    selected = false,
-                    onClick = {
-                        coroutineScope.launch {
-                            drawerState.close()
-                            onNavigateToSettings()
-                        }
-                    }
-                )
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier
+                        .width(300.dp)
+                        .fillMaxHeight()
+                ) {
+                    Text(
+                        text = stringResource(R.string.title_app),
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
 
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.menu_theme)) },
-                    icon = {
-                        Icon(
-                            FontAwesomeIcons.Solid.Moon,
-                            contentDescription = stringResource(R.string.menu_theme),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        coroutineScope.launch {
-                            drawerState.close()
-                        }
-                    }
-                )
+                    HorizontalDivider()
 
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.menu_recent)) },
-                    icon = {
-                        Icon(
-                            FontAwesomeIcons.Regular.Clock,
-                            contentDescription = stringResource(R.string.menu_recent),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        coroutineScope.launch {
-                            drawerState.close()
-                        }
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.menu_about)) },
-                    icon = { Icon(Icons.Default.Info, contentDescription = stringResource(R.string.menu_about)) },
-                    selected = false,
-                    onClick = {
-                        coroutineScope.launch {
-                            drawerState.close()
-                        }
-                    }
-                )
-            }
-        },
-        gesturesEnabled = true
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = stringResource(R.string.title_app),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            coroutineScope.launch {
-                                drawerState.open()
-                            }
-                        }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { saveFile() }) {
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.menu_settings)) },
+                        icon = {
                             Icon(
-                                imageVector = FontAwesomeIcons.Solid.Save,
-                                contentDescription = stringResource(R.string.save_file),
+                                Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.menu_settings)
+                            )
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                onNavigateToSettings()
+                            }
+                        }
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.menu_theme)) },
+                        icon = {
+                            Icon(
+                                FontAwesomeIcons.Solid.Moon,
+                                contentDescription = stringResource(R.string.menu_theme),
                                 modifier = Modifier.size(20.dp)
                             )
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                            }
                         }
-
-                        IconButton(onClick = { isFilePickerDialogVisible = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Create,
-                                contentDescription = stringResource(R.string.new_file)
-                            )
-                        }
-
-                        IconButton(onClick = {
-                            isFileExplorerVisible = !isFileExplorerVisible
-                        }) {
-                            Icon(
-                                imageVector = if (isFileExplorerVisible)
-                                    TablerIcons.Folder
-                                else
-                                    TablerIcons.FolderX,
-                                contentDescription = if (isFileExplorerVisible)
-                                    stringResource(R.string.hide_explorer)
-                                else
-                                    stringResource(R.string.show_explorer)
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                     )
-                )
-            },
-            bottomBar = {
-                Surface(
-                    tonalElevation = 2.dp,
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (preferences.autoSave) 
-                                stringResource(R.string.edit_mode_autosave) 
-                            else 
-                                stringResource(R.string.edit_mode),
-                            style = MaterialTheme.typography.bodySmall
-                        )
 
-                        Button(
-                            onClick = {
-                                isOutputPanelVisible = !isOutputPanelVisible
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (outputMessages.any { it.type == OutputType.ERROR })
-                                    MaterialTheme.colorScheme.error else preferences.accentColor
-                            )
-                        ) {
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.menu_recent)) },
+                        icon = {
                             Icon(
-                                imageVector = if (isOutputPanelVisible) 
-                                    Icons.Default.KeyboardArrowDown 
-                                else 
-                                    Icons.Default.KeyboardArrowUp,
-                                contentDescription = if (isOutputPanelVisible) 
-                                    stringResource(R.string.hide_output) 
-                                else 
-                                    stringResource(R.string.show_output)
+                                FontAwesomeIcons.Regular.Clock,
+                                contentDescription = stringResource(R.string.menu_recent),
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = stringResource(R.string.output_count, outputMessages.size))
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                            }
                         }
-                    }
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.menu_about)) },
+                        icon = {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = stringResource(R.string.menu_about)
+                            )
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                            }
+                        }
+                    )
                 }
             },
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    AnimatedVisibility(
-                        visible = isFileExplorerVisible,
-                        enter = fadeIn(animationSpec = tween(200)),
-                        exit = fadeOut(animationSpec = tween(200))
-                    ) {
-                        FileExplorer(
-                            rootPath = rootPath,
-                            onFileSelected = { fileItem ->
-                                loadFile(fileItem)
-                            },
-                            isDarkTheme = isDarkTheme,
-                            modifier = Modifier.width(250.dp)
-                        )
-                    }
-
-                    if (isFileExplorerVisible) {
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(1.dp),
-                            color = if (isDarkTheme) Color.White.copy(alpha = 0.2f) else Color.Black.copy(
-                                alpha = 0.1f
+            gesturesEnabled = true
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = stringResource(R.string.title_app),
+                                style = MaterialTheme.typography.titleLarge
                             )
-                        )
-                    }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                scope.launch {
+                                    drawerState.open()
+                                }
+                            }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { saveCurrentFile() }) {
+                                Icon(
+                                    imageVector = FontAwesomeIcons.Solid.Save,
+                                    contentDescription = stringResource(R.string.save_file),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
+                            IconButton(onClick = { isFilePickerDialogVisible = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Create,
+                                    contentDescription = stringResource(R.string.new_file)
+                                )
+                            }
+
+                            IconButton(onClick = {
+                                isFileExplorerVisible = !isFileExplorerVisible
+                            }) {
+                                Icon(
+                                    imageVector = if (isFileExplorerVisible)
+                                        TablerIcons.Folder
+                                    else
+                                        TablerIcons.FolderX,
+                                    contentDescription = if (isFileExplorerVisible)
+                                        stringResource(R.string.hide_explorer)
+                                    else
+                                        stringResource(R.string.show_explorer)
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    )
+                },
+                bottomBar = {
+                    Surface(
+                        tonalElevation = 2.dp,
+                        color = MaterialTheme.colorScheme.surface
                     ) {
-                        TabBar(
-                            tabs = openTabs,
-                            onTabSelected = { tab ->
-                                openTabs =
-                                    openTabs.map { it.copy(isActive = it.file.path == tab.file.path) }
-                                loadFile(tab.file)
-                            },
-                            onTabClosed = { tab ->
-                                openTabs = openTabs.filter { it.file.path != tab.file.path }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (preferences.autoSave)
+                                    stringResource(R.string.edit_mode_autosave)
+                                else
+                                    stringResource(R.string.edit_mode),
+                                style = MaterialTheme.typography.bodySmall
+                            )
 
-                                if (tab.isActive && openTabs.isNotEmpty()) {
-                                    val newActiveTab = openTabs.first()
-                                    openTabs = openTabs.map {
-                                        if (it == newActiveTab) it.copy(isActive = true) else it
+                            Button(
+                                onClick = {
+                                    isOutputPanelVisible = !isOutputPanelVisible
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (outputMessages.any { it.type == OutputType.ERROR })
+                                        MaterialTheme.colorScheme.error else preferences.accentColor
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = if (isOutputPanelVisible)
+                                        Icons.Default.KeyboardArrowDown
+                                    else
+                                        Icons.Default.KeyboardArrowUp,
+                                    contentDescription = if (isOutputPanelVisible)
+                                        stringResource(R.string.hide_output)
+                                    else
+                                        stringResource(R.string.show_output)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = stringResource(
+                                        R.string.output_count,
+                                        outputMessages.size
+                                    )
+                                )
+                            }
+                        }
+                    }
+                },
+                snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+            ) { paddingValues ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        AnimatedVisibility(
+                            visible = isFileExplorerVisible,
+                            enter = fadeIn(animationSpec = tween(200)),
+                            exit = fadeOut(animationSpec = tween(200))
+                        ) {
+                            FileExplorer(
+                                files = files,
+                                currentPath = currentDirectory,
+                                onFileSelected = { fileItem ->
+                                    loadFile(fileItem)
+                                },
+                                onNavigateToDirectory = { path ->
+                                    fileExplorerViewModel.navigateToDirectory(path)
+                                },
+                                onNavigateUp = {
+                                    fileExplorerViewModel.navigateUp()
+                                },
+                                onCreateFile = { fileName ->
+                                    fileExplorerViewModel.createNewFile(fileName)
+                                },
+                                onDeleteFile = { fileItem ->
+                                    fileExplorerViewModel.deleteFile(fileItem)
+                                },
+                                isLoading = fileExplorerLoading,
+                                isDarkTheme = isDarkTheme,
+                                modifier = Modifier.width(250.dp)
+                            )
+                        }
+
+                        if (isFileExplorerVisible) {
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(1.dp),
+                                color = if (isDarkTheme) Color.White.copy(alpha = 0.2f) else Color.Black.copy(
+                                    alpha = 0.1f
+                                )
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background)
+                        ) {
+                            TabBar(
+                                tabs = openTabs,
+                                onTabSelected = { tab ->
+                                    loadFile(tab.file)
+                                },
+                                onTabClosed = { tab ->
+                                    openTabs = openTabs.filter { it.file.path != tab.file.path }
+
+                                    if (tab.isActive && openTabs.isNotEmpty()) {
+                                        val newActiveTab = openTabs.first()
+                                        loadFile(newActiveTab.file)
+                                    } else if (openTabs.isEmpty()) {
+                                        editorViewModel.clearFile()
                                     }
-                                    loadFile(newActiveTab.file)
-                                } else if (openTabs.isEmpty()) {
-                                    editorState = EditorState()
-                                }
-                            },
-                            isDarkTheme = isDarkTheme
-                        )
+                                },
+                                isDarkTheme = isDarkTheme
+                            )
 
-                        EditorComponent(
-                            editorState = editorState,
-                            onEditorStateChange = { newState ->
-                                val updatedState = if (newState.currentFile == null && editorState.currentFile != null) {
-                                    newState.copy(currentFile = editorState.currentFile)
-                                } else {
-                                    newState
-                                }
-                                
-                                editorState = updatedState
-                                
-                                if (updatedState.currentFile != null) {
-                                    editorStateMap = editorStateMap + (updatedState.currentFile.path to updatedState)
-                                    
-                                    openTabs = openTabs.map { tab ->
-                                        if (tab.file.path == updatedState.currentFile.path) {
-                                            tab.copy(isModified = updatedState.isModified)
-                                        } else {
-                                            tab
-                                        }
+                            EditorComponent(
+                                editorState = editorState,
+                                onEditorStateChange = { newState ->
+                                    editorViewModel.updateContent(newState.content)
+
+                                    if (newState.cursorPosition != editorState.cursorPosition) {
+                                        editorViewModel.updateCursorPosition(newState.cursorPosition)
                                     }
-                                }
 
-                                if (preferences.autoSave && updatedState.isModified && updatedState.currentFile != null) {
-                                    try {
-                                        updatedState.currentFile.file.writeText(updatedState.content)
-                                        editorState = updatedState.copy(isModified = false)
-                                        
-                                        editorStateMap = editorStateMap + (updatedState.currentFile.path to editorState)
+                                    if (newState.selectionStart != editorState.selectionStart ||
+                                        newState.selectionEnd != editorState.selectionEnd
+                                    ) {
+                                        editorViewModel.updateSelection(
+                                            newState.selectionStart,
+                                            newState.selectionEnd
+                                        )
+                                    }
+
+                                    val currentFile = editorState.currentFile
+                                    if (currentFile != null && newState.isModified != editorState.isModified) {
                                         openTabs = openTabs.map { tab ->
-                                            if (tab.file.path == updatedState.currentFile.path) {
-                                                tab.copy(isModified = false)
+                                            if (tab.file.path == currentFile.path) {
+                                                tab.copy(isModified = newState.isModified)
                                             } else {
                                                 tab
                                             }
                                         }
-                                    } catch (e: Exception) {
-                                        outputMessages = outputMessages + OutputMessage(
-                                            message = context.getString(R.string.error_autosave, e.message),
-                                            type = OutputType.WARNING
-                                        )
                                     }
+
+                                    if (preferences.autoSave && newState.isModified && newState.content != editorState.content) {
+                                        saveCurrentFile()
+                                    }
+                                },
+                                isDarkTheme = isDarkTheme,
+                                modifier = Modifier.weight(1f),
+                                showLineNumbers = preferences.showLineNumbers,
+                                showToolbar = true
+                            )
+
+                            OutputPanel(
+                                messages = outputMessages,
+                                onClearOutput = { editorViewModel.clearOutput() },
+                                isDarkTheme = isDarkTheme,
+                                isVisible = isOutputPanelVisible,
+                                onVisibilityChange = { isOutputPanelVisible = it }
+                            )
+                        }
+                    }
+
+                    if (isFilePickerDialogVisible) {
+                        AlertDialog(
+                            onDismissRequest = { isFilePickerDialogVisible = false },
+                            title = { Text(stringResource(R.string.create_open_file_title)) },
+                            text = {
+                                Column {
+                                    Text(stringResource(R.string.file_picker_dialog_message_1))
+                                    Text(stringResource(R.string.file_picker_dialog_message_2))
                                 }
                             },
-                            isDarkTheme = isDarkTheme,
-                            modifier = Modifier.weight(1f),
-                            showLineNumbers = preferences.showLineNumbers,
-                            showToolbar = true
-                        )
-
-                        OutputPanel(
-                            messages = outputMessages,
-                            onClearOutput = { outputMessages = emptyList() },
-                            isDarkTheme = isDarkTheme,
-                            isVisible = isOutputPanelVisible,
-                            onVisibilityChange = { isOutputPanelVisible = it }
+                            confirmButton = {
+                                TextButton(onClick = { isFilePickerDialogVisible = false }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
                         )
                     }
-                }
-
-                if (isFilePickerDialogVisible) {
-                    AlertDialog(
-                        onDismissRequest = { isFilePickerDialogVisible = false },
-                        title = { Text(stringResource(R.string.create_open_file_title)) },
-                        text = {
-                            Column {
-                                Text(stringResource(R.string.file_picker_dialog_message_1))
-                                Text(stringResource(R.string.file_picker_dialog_message_2))
-                            }
-                        },
-                        confirmButton = {
-                            TextButton(onClick = { isFilePickerDialogVisible = false }) {
-                                Text(stringResource(R.string.ok))
-                            }
-                        }
-                    )
                 }
             }
         }

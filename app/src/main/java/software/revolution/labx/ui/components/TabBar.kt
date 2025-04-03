@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import compose.icons.FeatherIcons
@@ -37,7 +38,7 @@ import compose.icons.feathericons.FileText
 import compose.icons.feathericons.Image
 import compose.icons.lineawesomeicons.FileCodeSolid
 import compose.icons.lineawesomeicons.FilePdfSolid
-import software.revolution.labx.model.EditorTab
+import software.revolution.labx.R
 import software.revolution.labx.ui.theme.BackgroundDark
 import software.revolution.labx.ui.theme.BackgroundLight
 import software.revolution.labx.ui.theme.PrimaryLight
@@ -129,7 +130,7 @@ fun TabItem(
 
             Icon(
                 imageVector = fileIcon,
-                contentDescription = "Tipo de arquivo",
+                contentDescription = stringResource(R.string.file_type_icon),
                 tint = when (tab.file.extension.lowercase()) {
                     "kt", "java" -> PrimaryLight
                     "txt", "md" -> SecondaryLight
@@ -162,7 +163,7 @@ fun TabItem(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Close tab",
+                    contentDescription = stringResource(R.string.close_tab),
                     tint = if (isDarkTheme) Color.LightGray else Color.DarkGray,
                     modifier = Modifier.size(16.dp)
                 )

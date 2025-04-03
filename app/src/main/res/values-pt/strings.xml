@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">labx</string>
-    
+
+    <!-- Splash Screen -->
+    <string name="splash_subtitle">IDE Avançada para Android Processing</string>
+
     <!-- Main Editor Screen -->
     <string name="file_too_large">Arquivo muito grande (%1$dMB). O limite é %2$dMB para evitar problemas de memória.</string>
     <string name="file_too_large_snackbar">Arquivo muito grande para ser aberto no editor</string>
@@ -31,7 +34,7 @@
     <string name="file_picker_dialog_message_1">Aqui seria integrada uma interface de seleção de arquivos.</string>
     <string name="file_picker_dialog_message_2">Você poderia criar um novo arquivo ou abrir um existente.</string>
     <string name="ok">OK</string>
-    
+
     <!-- Editor Component -->
     <string name="select_file_to_edit">Selecione um arquivo para editar</string>
     <string name="save">Salvar</string>
@@ -41,12 +44,12 @@
     <string name="find_replace">Localizar/Substituir</string>
     <string name="cursor_position">Linha: %1$d, Col: %2$d</string>
     <string name="word_count">Palavras: %1$d</string>
-    
+
     <!-- Output Panel -->
     <string name="output">Saída</string>
     <string name="clear_output">Limpar saída</string>
     <string name="no_output_messages">Sem mensagens de saída</string>
-    
+
     <!-- Settings Screen -->
     <string name="settings_title">Configurações do Editor</string>
     <string name="back">Voltar</string>
@@ -64,4 +67,28 @@
     <string name="auto_save_subtitle">Salva o arquivo automaticamente ao fazer alterações</string>
     <string name="save_settings">Salvar configurações</string>
     <string name="selected">Selecionado</string>
+
+    <!-- File Explorer -->
+    <string name="explorer_title">Explorador</string>
+    <string name="close_search">Fechar busca</string>
+    <string name="search_files">Buscar arquivos</string>
+    <string name="refresh">Atualizar</string>
+    <string name="search_files_placeholder">Buscar arquivos...</string>
+    <string name="search_icon">Ícone de busca</string>
+    <string name="go_up">Subir</string>
+    <string name="no_matching_files">Nenhum arquivo correspondente</string>
+    <string name="no_files_found">Nenhum arquivo encontrado</string>
+    <string name="create_new_file">Criar novo arquivo</string>
+    <string name="file_name">Nome do arquivo</string>
+    <string name="create">Criar</string>
+    <string name="cancel">Cancelar</string>
+
+    <!-- File Item Component -->
+    <string name="folder_icon">Ícone de pasta</string>
+    <string name="file_icon">Ícone de arquivo</string>
+    <string name="delete_file">Excluir arquivo</string>
+
+    <!-- Tab Bar -->
+    <string name="file_type_icon">Ícone de tipo de arquivo</string>
+    <string name="close_tab">Fechar aba</string>
 </resources>

@@ -35,7 +35,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,13 +44,12 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.ChevronDown
 import compose.icons.tablericons.ChevronUp
 import software.revolution.labx.R
-import software.revolution.labx.model.OutputMessage
-import software.revolution.labx.model.OutputType
+import software.revolution.labx.domain.model.OutputMessage
+import software.revolution.labx.domain.model.OutputType
 import software.revolution.labx.ui.theme.PrimaryLight
 import software.revolution.labx.ui.theme.SurfaceDark
 import software.revolution.labx.ui.theme.SurfaceLight
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +62,6 @@ fun OutputPanel(
     onVisibilityChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -219,7 +216,7 @@ fun OutputMessageItem(
         Spacer(modifier = Modifier.width(8.dp))
 
         val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        val formattedTime = dateFormat.format(Date.from(message.timestamp))
+        val formattedTime = dateFormat.format(message.timestamp)
 
         Text(
             text = formattedTime,

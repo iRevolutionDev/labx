@@ -3,82 +3,71 @@ package software.revolution.labx
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import software.revolution.labx.ui.screens.EditorPreferences
+import dagger.hilt.android.AndroidEntryPoint
+import software.revolution.labx.presentation.viewmodel.EditorViewModel
+import software.revolution.labx.presentation.viewmodel.PermissionViewModel
 import software.revolution.labx.ui.screens.MainEditorScreen
 import software.revolution.labx.ui.screens.SettingsScreen
 import software.revolution.labx.ui.screens.SplashScreen
 import software.revolution.labx.ui.theme.LabxTheme
-import software.revolution.labx.ui.theme.PrimaryLight
 import software.revolution.labx.util.StoragePermissionManager
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private lateinit var permissionManager: StoragePermissionManager
+    private val permissionViewModel: PermissionViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        permissionManager = StoragePermissionManager(this) {}
+        val permissionManager = StoragePermissionManager(this) {
+            permissionViewModel.checkPermissions()
+        }
+        permissionViewModel.initPermissionManager(permissionManager)
 
         setContent {
-            val permissionsGranted =
-                remember { mutableStateOf(permissionManager.hasStoragePermissions()) }
-            val isDarkTheme = isSystemInDarkTheme()
+            val permissionsGranted by permissionViewModel.storagePermissionsGranted.collectAsStateWithLifecycle()
 
-            var editorPreferences by remember {
-                mutableStateOf(
-                    EditorPreferences(
-                        isDarkMode = isDarkTheme,
-                        fontSize = 14f,
-                        showLineNumbers = true,
-                        tabSize = 4,
-                        wordWrap = true,
-                        autoSave = false,
-                        accentColor = PrimaryLight
-                    )
-                )
-            }
+            val editorViewModel: EditorViewModel = hiltViewModel()
+            val preferences by editorViewModel.editorPreferences.collectAsStateWithLifecycle(null)
 
             LaunchedEffect(Unit) {
-                if (!permissionsGranted.value) {
-                    permissionManager.checkAndRequestPermissions()
+                if (!permissionsGranted) {
+                    permissionViewModel.requestPermissions()
                 }
             }
 
-            LabxTheme(
-                darkTheme = editorPreferences.isDarkMode,
-                dynamicColor = false
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+            preferences?.let { prefs ->
+                LabxTheme(
+                    darkTheme = prefs.isDarkMode,
+                    dynamicColor = false
                 ) {
-                    val navController = rememberNavController()
-                    AppNavigation(
-                        navController = navController,
-                        editorPreferences = editorPreferences,
-                        onPreferencesChanged = { newPreferences ->
-                            editorPreferences = newPreferences
-                        }
-                    )
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        val navController = rememberNavController()
+                        AppNavigation(
+                            navController = navController
+                        )
+                    }
                 }
             }
         }
@@ -86,17 +75,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (!permissionManager.hasStoragePermissions()) {
-            permissionManager.checkAndRequestPermissions()
-        }
+        permissionViewModel.checkPermissions()
     }
 }
 
 @Composable
 fun AppNavigation(
-    navController: NavHostController,
-    editorPreferences: EditorPreferences,
-    onPreferencesChanged: (EditorPreferences) -> Unit
+    navController: NavHostController
 ) {
     NavHost(
         navController = navController,
@@ -130,7 +115,6 @@ fun AppNavigation(
             }
         ) {
             MainEditorScreen(
-                preferences = editorPreferences,
                 onNavigateToSettings = {
                     navController.navigate("settings")
                 }
@@ -153,8 +137,6 @@ fun AppNavigation(
             }
         ) {
             SettingsScreen(
-                preferences = editorPreferences,
-                onPreferencesChanged = onPreferencesChanged,
                 onBackPressed = {
                     navController.popBackStack()
                 }
