@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+    id("kotlinx-serialization")
 }
 
 android {
@@ -50,6 +51,10 @@ dependencies {
     implementation(libs.language.textmate)
     implementation(libs.language.java)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
+
+    // TOML parser
+    implementation(libs.ktoml.core)
+    implementation(libs.ktoml.file)
 
     // Icon Pack
     implementation(libs.composeIcons.simpleIcons)

@@ -18,6 +18,7 @@ room = "2.6.1"
 datastore = "1.1.4"
 coroutines = "1.10.1"
 lifecycleCompose = "2.8.7"
+ktoml = "0.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -63,6 +64,8 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 
 # DataStore
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+ktoml-core = { group = "com.akuleshov7", name = "ktoml-core", version.ref = "ktoml" }
+ktoml-file = { group = "com.akuleshov7", name = "ktoml-file", version.ref = "ktoml" }
 
 composeIcons-cssGg = { module = "br.com.devsrsouza.compose.icons:css-gg", version.ref = "composeIcons" }
 composeIcons-weatherIcons = { module = "br.com.devsrsouza.compose.icons:erikflowers-weather-icons", version.ref = "composeIcons" }

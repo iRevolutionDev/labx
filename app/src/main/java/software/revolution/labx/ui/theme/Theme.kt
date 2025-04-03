@@ -17,31 +17,37 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
-    secondary = SecondaryDark,
+    primary = AppDarkColors.Primary,
+    onPrimary = Color.White,
+    secondary = AppDarkColors.SecondaryBackground,
+    onSecondary = AppDarkColors.TextPrimary,
     tertiary = AccentColor,
-    background = BackgroundDark,
-    surface = SurfaceDark,
-    onPrimary = Color(0xFFFFFFFF),
-    onSecondary = Color(0xFFFFFFFF),
-    onTertiary = Color(0xFF000000),
-    onBackground = Color(0xFFE1E1E1),
-    onSurface = Color(0xFFE1E1E1),
-    error = ErrorColor
+    background = AppDarkColors.Background,
+    onBackground = AppDarkColors.TextPrimary,
+    surface = AppDarkColors.CardBackground,
+    onSurface = AppDarkColors.TextPrimary,
+    surfaceVariant = AppDarkColors.AccentBackground,
+    onSurfaceVariant = AppDarkColors.TextSecondary,
+    error = AppDarkColors.Error,
+    onError = Color.White,
+    outline = AppDarkColors.Border
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryLight,
-    secondary = SecondaryLight,
+    primary = AppLightColors.Primary,
+    onPrimary = Color.White,
+    secondary = AppLightColors.SecondaryBackground,
+    onSecondary = AppLightColors.TextPrimary,
     tertiary = AccentColor,
-    background = BackgroundLight,
-    surface = SurfaceLight,
-    onPrimary = Color(0xFFFFFFFF),
-    onSecondary = Color(0xFF000000),
-    onTertiary = Color(0xFF000000),
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    error = ErrorColor
+    background = AppLightColors.Background,
+    onBackground = AppLightColors.TextPrimary,
+    surface = AppLightColors.CardBackground,
+    onSurface = AppLightColors.TextPrimary,
+    surfaceVariant = AppLightColors.AccentBackground,
+    onSurfaceVariant = AppLightColors.TextSecondary,
+    error = AppLightColors.Error,
+    onError = Color.White,
+    outline = AppLightColors.Border
 )
 
 @Composable
@@ -64,7 +70,7 @@ fun LabxTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }

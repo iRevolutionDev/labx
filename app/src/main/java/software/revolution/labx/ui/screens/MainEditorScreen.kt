@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
@@ -63,10 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.FontAwesomeIcons
 import compose.icons.TablerIcons
-import compose.icons.fontawesomeicons.Regular
 import compose.icons.fontawesomeicons.Solid
-import compose.icons.fontawesomeicons.regular.Clock
-import compose.icons.fontawesomeicons.solid.Moon
 import compose.icons.fontawesomeicons.solid.Save
 import compose.icons.tablericons.Folder
 import compose.icons.tablericons.FolderX
@@ -186,56 +182,6 @@ fun MainEditorScreen(
                             scope.launch {
                                 drawerState.close()
                                 onNavigateToSettings()
-                            }
-                        }
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.menu_theme)) },
-                        icon = {
-                            Icon(
-                                FontAwesomeIcons.Solid.Moon,
-                                contentDescription = stringResource(R.string.menu_theme),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        },
-                        selected = false,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                            }
-                        }
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.menu_recent)) },
-                        icon = {
-                            Icon(
-                                FontAwesomeIcons.Regular.Clock,
-                                contentDescription = stringResource(R.string.menu_recent),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        },
-                        selected = false,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                            }
-                        }
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.menu_about)) },
-                        icon = {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = stringResource(R.string.menu_about)
-                            )
-                        },
-                        selected = false,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
                             }
                         }
                     )

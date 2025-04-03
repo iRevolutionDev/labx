@@ -256,7 +256,6 @@ fun FileExplorer(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Botão de navegação para o diretório pai
                     item {
                         Row(
                             modifier = Modifier
