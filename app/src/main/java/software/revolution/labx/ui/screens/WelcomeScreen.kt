@@ -58,6 +58,7 @@ import compose.icons.tablericons.Code
 import compose.icons.tablericons.File
 import compose.icons.tablericons.Folder
 import kotlinx.coroutines.delay
+import software.revolution.labx.domain.model.Project
 import software.revolution.labx.presentation.viewmodel.ProjectViewModel
 import software.revolution.labx.ui.components.GlassCard
 import software.revolution.labx.ui.theme.AppDarkColors
@@ -397,7 +398,7 @@ fun WelcomeScreen(
 
 @Composable
 fun ProjectItem(
-    project: software.revolution.labx.presentation.viewmodel.Project,
+    project: Project,
     isDarkTheme: Boolean,
     delayMultiplier: Int = 0,
     onClick: () -> Unit
