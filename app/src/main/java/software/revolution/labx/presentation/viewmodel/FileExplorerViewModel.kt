@@ -1,6 +1,5 @@
 package software.revolution.labx.presentation.viewmodel
 
-import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,7 +20,7 @@ class FileExplorerViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _currentDirectory =
-        MutableStateFlow<String>(Environment.getExternalStorageDirectory().absolutePath)
+        MutableStateFlow("")
     val currentDirectory: StateFlow<String> = _currentDirectory.asStateFlow()
 
     private val _files = MutableStateFlow<List<FileItem>>(emptyList())
@@ -33,11 +32,9 @@ class FileExplorerViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    init {
-        loadFilesInCurrentDirectory()
-    }
-
     fun loadFilesInCurrentDirectory() {
+        if (_currentDirectory.value.isEmpty()) return
+
         viewModelScope.launch {
             fileRepository.listFilesInDirectory(_currentDirectory.value).collectLatest { result ->
                 when (result) {
@@ -64,12 +61,26 @@ class FileExplorerViewModel @Inject constructor(
     }
 
     fun navigateToDirectory(path: String) {
-        _currentDirectory.value = path
+        if (path.isEmpty() || path == _currentDirectory.value) return
+
+        val normalizedPath = if (path.endsWith(File.separator)) path else "$path${File.separator}"
+
+        _currentDirectory.value = normalizedPath
+        loadFilesInCurrentDirectory()
+    }
+
+    fun setRootDirectory(path: String) {
+        if (path.isBlank()) return
+
+        val normalizedPath = if (path.endsWith(File.separator)) path else "$path${File.separator}"
+        _currentDirectory.value = normalizedPath
         loadFilesInCurrentDirectory()
     }
 
     fun navigateUp() {
         val currentPath = _currentDirectory.value
+        if (currentPath.isEmpty()) return
+
         val parent = File(currentPath).parent
         if (parent != null) {
             _currentDirectory.value = parent
@@ -78,7 +89,7 @@ class FileExplorerViewModel @Inject constructor(
     }
 
     fun createNewFile(fileName: String) {
-        if (fileName.isBlank()) return
+        if (fileName.isBlank() || _currentDirectory.value.isEmpty()) return
 
         viewModelScope.launch {
             fileRepository.createFile(_currentDirectory.value, fileName).collectLatest { result ->
@@ -126,6 +137,13 @@ class FileExplorerViewModel @Inject constructor(
             }
         }
     }
+
+    fun listFilesInDirectory(directoryPath: String) {
+        if (directoryPath.isEmpty()) return
+    }
+    
+    suspend fun listFilesInDirectoryFlow(directoryPath: String) =
+        fileRepository.listFilesInDirectory(directoryPath)
 
     fun clearError() {
         _error.value = null

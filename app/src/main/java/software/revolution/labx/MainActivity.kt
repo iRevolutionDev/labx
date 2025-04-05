@@ -25,8 +25,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dagger.hilt.android.AndroidEntryPoint
 import software.revolution.labx.presentation.viewmodel.EditorViewModel
+import software.revolution.labx.presentation.viewmodel.FileExplorerViewModel
 import software.revolution.labx.presentation.viewmodel.PermissionViewModel
 import software.revolution.labx.presentation.viewmodel.ProjectViewModel
+import software.revolution.labx.ui.screens.IdeLayoutScreen
 import software.revolution.labx.ui.screens.MainEditorScreen
 import software.revolution.labx.ui.screens.NewProjectScreen
 import software.revolution.labx.ui.screens.SettingsScreen
@@ -54,6 +56,7 @@ class MainActivity : ComponentActivity() {
             val preferences by editorViewModel.editorPreferences.collectAsStateWithLifecycle(null)
 
             val projectViewModel: ProjectViewModel = hiltViewModel()
+            val fileExplorerViewModel: FileExplorerViewModel = hiltViewModel()
             val creationSuccessProject by projectViewModel.creationSuccess.collectAsStateWithLifecycle()
 
             LaunchedEffect(Unit) {
@@ -76,7 +79,7 @@ class MainActivity : ComponentActivity() {
                         creationSuccessProject?.let { project ->
                             LaunchedEffect(project) {
                                 projectViewModel.clearCreationSuccess()
-                                navController.navigate("main?path=${project.path}") {
+                                navController.navigate("ide?path=${project.path}") {
                                     popUpTo("welcome") { inclusive = false }
                                 }
                             }
@@ -84,7 +87,8 @@ class MainActivity : ComponentActivity() {
 
                         AppNavigation(
                             navController = navController,
-                            projectViewModel = projectViewModel
+                            projectViewModel = projectViewModel,
+                            fileExplorerViewModel = fileExplorerViewModel
                         )
                     }
                 }
@@ -101,7 +105,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation(
     navController: NavHostController,
-    projectViewModel: ProjectViewModel
+    projectViewModel: ProjectViewModel,
+    fileExplorerViewModel: FileExplorerViewModel
 ) {
     NavHost(
         navController = navController,
@@ -143,12 +148,12 @@ fun AppNavigation(
                     navController.navigate("new_project")
                 },
                 onOpenProject = { path ->
-                    navController.navigate("main?path=$path") {
+                    navController.navigate("ide?path=$path") {
                         popUpTo("welcome") { inclusive = false }
                     }
                 },
                 onCreateFile = {
-                    navController.navigate("main") {
+                    navController.navigate("ide") {
                         popUpTo("welcome") { inclusive = false }
                     }
                 },
@@ -201,6 +206,44 @@ fun AppNavigation(
                 onNavigateToSettings = {
                     navController.navigate("settings")
                 }
+            )
+        }
+
+        composable(
+            route = "ide?path={path}",
+            arguments = listOf(
+                navArgument("path") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                    nullable = true
+                }
+            ),
+            enterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(700)
+                ) + fadeIn(animationSpec = tween(700))
+            }
+        ) { backStackEntry ->
+            val path = backStackEntry.arguments?.getString("path") ?: ""
+
+            LaunchedEffect(path) {
+                if (path.isNotEmpty()) {
+                    projectViewModel.openProject(path)
+                    fileExplorerViewModel.setRootDirectory(path)
+                }
+            }
+
+            IdeLayoutScreen(
+                onNavigateToSettings = {
+                    navController.navigate("settings")
+                },
+                onExitToWelcome = {
+                    navController.navigate("welcome") {
+                        popUpTo("ide") { inclusive = true }
+                    }
+                },
+                fileExplorerViewModel = fileExplorerViewModel,
             )
         }
 
