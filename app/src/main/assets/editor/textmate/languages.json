@@ -1,0 +1,16 @@
+{
+  "languages": [
+    {
+      "grammar": "editor/textmate/java/syntaxes/java.tmLanguage.json",
+      "name": "java",
+      "scopeName": "source.java",
+      "languageConfiguration": "editor/textmate/java/language-configuration.json"
+    },
+    {
+      "grammar": "editor/textmate/kotlin/syntaxes/Kotlin.tmLanguage",
+      "name": "kotlin",
+      "scopeName": "source.kotlin",
+      "languageConfiguration": "editor/textmate/kotlin/language-configuration.json"
+    }
+  ]
+}

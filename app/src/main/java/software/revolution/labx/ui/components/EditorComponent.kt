@@ -50,10 +50,12 @@ import compose.icons.fontawesomeicons.solid.Save
 import compose.icons.fontawesomeicons.solid.Undo
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.event.SelectionChangeEvent
-import io.github.rosemoe.sora.langs.java.JavaLanguage
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
+import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
+import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
+import io.github.rosemoe.sora.langs.textmate.registry.dsl.languages
 import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
 import io.github.rosemoe.sora.widget.CodeEditor
@@ -111,11 +113,17 @@ fun EditorComponent(
 
     LaunchedEffect(currentFile?.extension) {
         editor?.let { currentEditor ->
-            val language = when (currentFile?.extension?.lowercase()) {
-                "java" -> JavaLanguage()
-                else -> null
+            val languageScopeName = when (currentFile?.extension?.lowercase()) {
+                "java" -> "source.java"
+                "kotlin" -> "source.kotlin"
+                else -> "text.plain"
             }
-            language?.let { currentEditor.setEditorLanguage(it) }
+
+            val language = TextMateLanguage.create(
+                languageScopeName, true
+            )
+
+            editor?.setEditorLanguage(language)
         }
     }
 
@@ -461,12 +469,16 @@ private fun createEditorView(
     applyTheme(editor, theme)
     editor.setText(initialText)
 
-    val language = when (fileLanguage?.lowercase()) {
-        "java" -> JavaLanguage()
-        else -> null
+    val languageScopeName = when (fileLanguage?.lowercase()) {
+        "java" -> "source.java"
+        "kotlin" -> "source.kotlin"
+        else -> "text.plain"
     }
+    val language = TextMateLanguage.create(
+        languageScopeName, true
+    )
 
-    language?.let { editor.setEditorLanguage(it) }
+    editor.setEditorLanguage(language)
 
     editor.isWordwrap = true
     editor.nonPrintablePaintingFlags = 0
@@ -534,9 +546,19 @@ private fun loadThemes(context: Context) {
 private fun applyTheme(editor: CodeEditor, theme: String? = "darcula") {
     try {
         val themeRegistry = ThemeRegistry.getInstance()
+        val grammarRegistry = GrammarRegistry.getInstance()
         val themeName = theme ?: "darcula"
 
         themeRegistry.setTheme(themeName)
+        grammarRegistry.loadGrammars(
+            languages {
+                language("java") {
+                    grammar = "editor/textmate/java/syntaxes/java.tmLanguage.json"
+                    defaultScopeName()
+                    languageConfiguration = "editor/textmate/java/language-configuration.json"
+                }
+            }
+        )
 
         val editorColorScheme = TextMateColorScheme.create(themeRegistry)
         editor.colorScheme = editorColorScheme
