@@ -140,6 +140,10 @@ fun FileExplorer(
             newFilePath = file.path
             isFileActionsOpen = true
         }
+        
+        override fun openFile(file: FileItem) {
+            onFileSelected(file)
+        }
 
         override fun handleDeleteFile() {
             selectedFile?.let { file ->
@@ -380,7 +384,7 @@ private fun DisplayRootFiles(
                 if (file.isDirectory) {
                     events.toggleFolderExpansion(file.path)
                 } else {
-                    events.openFileActions(file)
+                    events.openFile(file)
                 }
             },
             onLongClick = { events.openFileActions(file) },
@@ -452,7 +456,7 @@ private fun RenderFileTreeItem(
             if (file.isDirectory) {
                 events.toggleFolderExpansion(file.path)
             } else {
-                events.openFileActions(file)
+                events.openFile(file)
             }
         },
         onLongClick = { events.openFileActions(file) },

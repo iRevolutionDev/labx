@@ -27,6 +27,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -57,7 +57,6 @@ import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import io.github.rosemoe.sora.widget.subscribeEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import software.revolution.labx.R
 import software.revolution.labx.domain.model.EditorState
 import software.revolution.labx.ui.theme.BackgroundDark
@@ -79,12 +78,21 @@ fun EditorComponent(
     fontSize: Float = 14f,
     wordWrap: Boolean = true
 ) {
-    LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
     var editor by remember { mutableStateOf<CodeEditor?>(null) }
+
+    var stableContent by remember(editorState.currentFile?.path) {
+        mutableStateOf(editorState.content)
+    }
 
     var cursorPosition by rememberSaveable { mutableStateOf("Line: 1, Col: 1") }
     var wordCount by rememberSaveable { mutableIntStateOf(0) }
+
+    var prevLineNumbers by remember { mutableStateOf(showLineNumbers) }
+    var prevWordWrap by remember { mutableStateOf(wordWrap) }
+    var prevFontSize by remember { mutableFloatStateOf(fontSize) }
+    var prevIsDarkTheme by remember { mutableStateOf(isDarkTheme) }
 
     val currentFile = remember(editorState.currentFile?.path) { editorState.currentFile }
 
@@ -92,9 +100,9 @@ fun EditorComponent(
         derivedStateOf { currentFile?.extension?.uppercase() ?: "TXT" }
     }
 
-    LaunchedEffect(Unit) {
-        if (editorState.content.isNotEmpty() || editorState.currentFile != null) {
-            wordCount = editorState.content.split(Regex("\\s+")).count { it.isNotEmpty() }
+    LaunchedEffect(stableContent) {
+        if (stableContent.isNotEmpty()) {
+            wordCount = stableContent.split(Regex("\\s+")).count { it.isNotEmpty() }
         }
     }
 
@@ -108,12 +116,6 @@ fun EditorComponent(
         }
     }
 
-    LaunchedEffect(editorState) {
-        if (editorState.currentFile == null && currentFile != null) {
-            onEditorStateChange(editorState.copy(currentFile = currentFile))
-        }
-    }
-
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -121,7 +123,8 @@ fun EditorComponent(
                 Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
                     editor?.let { currentEditor ->
                         val currentContent = currentEditor.text.toString()
-                        if (currentContent != editorState.content) {
+                        if (currentContent != stableContent) {
+                            stableContent = currentContent
                             onEditorStateChange(
                                 editorState.copy(
                                     content = currentContent,
@@ -137,8 +140,8 @@ fun EditorComponent(
 
                 Lifecycle.Event.ON_RESUME -> {
                     editor?.let { currentEditor ->
-                        if (currentEditor.text.toString() != editorState.content) {
-                            currentEditor.setText(editorState.content)
+                        if (currentEditor.text.toString() != stableContent) {
+                            currentEditor.setText(stableContent)
                         }
                     }
                 }
@@ -162,9 +165,11 @@ fun EditorComponent(
             EditorToolbar(
                 onSave = {
                     editor?.text?.let { text ->
+                        val content = text.toString()
+                        stableContent = content
                         onEditorStateChange(
                             editorState.copy(
-                                content = text.toString(),
+                                content = content,
                                 isModified = false
                             )
                         )
@@ -188,29 +193,27 @@ fun EditorComponent(
                 factory = { ctx ->
                     createEditorView(
                         ctx,
-                        editorState.content,
+                        stableContent,
                         isDarkTheme,
                         fontSize,
                         editorState.language
                     ).also { newEditor ->
                         editor = newEditor
 
-                        newEditor.subscribeEvent<ContentChangeEvent> { _, _ ->
-                            val content = newEditor.text.toString()
+                        newEditor.subscribeEvent<ContentChangeEvent> { event, _ ->
+                            val content = event.changedText
                             wordCount = content.split(Regex("\\s+")).count { it.isNotEmpty() }
 
                             coroutineScope.launch(Dispatchers.Main) {
-                                withContext(Dispatchers.Main) {
-                                    onEditorStateChange(
-                                        editorState.copy(
-                                            content = content,
-                                            isModified = true,
-                                            cursorPosition = newEditor.cursor.leftLine * 100 + newEditor.cursor.leftColumn,
-                                            selectionStart = newEditor.cursor.left,
-                                            selectionEnd = newEditor.cursor.right
-                                        )
+                                onEditorStateChange(
+                                    editorState.copy(
+                                        content = content.toString(),
+                                        isModified = true,
+                                        cursorPosition = newEditor.cursor.leftLine * 100 + newEditor.cursor.leftColumn,
+                                        selectionStart = newEditor.cursor.left,
+                                        selectionEnd = newEditor.cursor.right
                                     )
-                                }
+                                )
                             }
                         }
 
@@ -232,26 +235,37 @@ fun EditorComponent(
                     }
                 },
                 update = { view ->
-                    if (view.text.toString() != editorState.content) {
-                        val line = view.cursor.leftLine
-                        val col = view.cursor.leftColumn
+                    if (prevLineNumbers != showLineNumbers) {
+                        view.isLineNumberEnabled = showLineNumbers
+                        prevLineNumbers = showLineNumbers
+                    }
 
-                        view.setText(editorState.content)
+                    if (prevWordWrap != wordWrap) {
+                        view.isWordwrap = wordWrap
+                        prevWordWrap = wordWrap
+                    }
+
+                    if (prevFontSize != fontSize) {
+                        view.setTextSize(fontSize)
+                        prevFontSize = fontSize
+                    }
+
+                    if (prevIsDarkTheme != isDarkTheme) {
+                        applyTheme(view, isDarkTheme)
+                        prevIsDarkTheme = isDarkTheme
+                    }
+
+                    if (view.tag != editorState.currentFile?.path && editorState.currentFile != null) {
+                        view.tag = editorState.currentFile.path
+                        val line = 0
+                        val col = 0
+
+                        view.setText(stableContent)
                         try {
-                            if (line < view.lineCount) {
-                                view.setSelection(
-                                    line,
-                                    col.coerceAtMost(view.text.getColumnCount(line))
-                                )
-                            }
+                            view.setSelection(line, col)
                         } catch (_: Exception) {
                         }
                     }
-
-                    view.isLineNumberEnabled = showLineNumbers
-                    view.isWordwrap = wordWrap
-                    view.setTextSize(fontSize)
-                    applyTheme(view, isDarkTheme)
                 },
                 modifier = Modifier.fillMaxSize()
             )

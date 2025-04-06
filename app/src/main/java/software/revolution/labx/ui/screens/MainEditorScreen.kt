@@ -117,8 +117,6 @@ fun MainEditorScreen(
     }
 
     fun loadFile(fileItem: FileItem) {
-        editorViewModel.openFile(fileItem)
-
         val existingTab = openTabs.find { it.file.path == fileItem.path }
         if (existingTab != null) {
             openTabs = openTabs.map { tab ->
@@ -132,6 +130,8 @@ fun MainEditorScreen(
             val newTab = EditorTab(file = fileItem, isActive = true)
             openTabs = openTabs.map { it.copy(isActive = false) } + newTab
         }
+
+        editorViewModel.openFile(fileItem)
     }
 
     fun saveCurrentFile() {

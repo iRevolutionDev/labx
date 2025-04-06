@@ -3,9 +3,6 @@ package software.revolution.labx.domain.model
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
-/**
- * Modelo para representar uma ação na interface de arquivo
- */
 data class FileAction(
     val text: String,
     val icon: ImageVector,
@@ -13,9 +10,6 @@ data class FileAction(
     val onClick: () -> Unit
 )
 
-/**
- * Estado do explorador de arquivos
- */
 data class FileExplorerState(
     val expandedFolders: Map<String, Boolean> = emptyMap(),
     val folderContents: Map<String, List<FileItem>> = emptyMap(),
@@ -30,15 +24,13 @@ data class FileExplorerState(
     val newFileLanguage: String = "kotlin"
 )
 
-/**
- * Interface para eventos do explorador de arquivos
- */
 interface FileExplorerEvents {
     fun startRenaming(file: FileItem)
     fun confirmRename(file: FileItem)
     fun cancelRename(file: FileItem)
     fun handleCreateFile()
     fun openFileActions(file: FileItem)
+    fun openFile(file: FileItem)
     fun handleDeleteFile()
     fun toggleFolderExpansion(folderPath: String)
     fun loadFolderContents(folderPath: String)
