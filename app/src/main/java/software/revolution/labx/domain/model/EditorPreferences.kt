@@ -9,5 +9,6 @@ data class EditorPreferences(
     val tabSize: Int = 4,
     val wordWrap: Boolean = true,
     val autoSave: Boolean = false,
-    val accentColor: Color
+    val accentColor: Color,
+    val editorTheme: String = "darcula"
 )

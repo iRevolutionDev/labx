@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import software.revolution.labx.domain.model.EditorPreferences
@@ -23,6 +24,7 @@ interface EditorPreferencesRepository {
     suspend fun updateWordWrap(wordWrap: Boolean)
     suspend fun updateAutoSave(autoSave: Boolean)
     suspend fun updateAccentColor(accentColor: Long)
+    suspend fun updateEditorTheme(theme: String)
 }
 
 class EditorPreferencesRepositoryImpl @Inject constructor(
@@ -37,6 +39,7 @@ class EditorPreferencesRepositoryImpl @Inject constructor(
         val WORD_WRAP = booleanPreferencesKey("word_wrap")
         val AUTO_SAVE = booleanPreferencesKey("auto_save")
         val ACCENT_COLOR = longPreferencesKey("accent_color")
+        val EDITOR_THEME = stringPreferencesKey("editor_theme")
     }
 
     override val editorPreferences: Flow<EditorPreferences> = dataStore.data.map { preferences ->
@@ -47,7 +50,8 @@ class EditorPreferencesRepositoryImpl @Inject constructor(
             tabSize = preferences[PreferencesKeys.TAB_SIZE] ?: 4,
             wordWrap = preferences[PreferencesKeys.WORD_WRAP] != false,
             autoSave = preferences[PreferencesKeys.AUTO_SAVE] == true,
-            accentColor = PrimaryLight
+            accentColor = PrimaryLight,
+            editorTheme = preferences[PreferencesKeys.EDITOR_THEME] ?: "darcula"
         )
     }
 
@@ -90,6 +94,12 @@ class EditorPreferencesRepositoryImpl @Inject constructor(
     override suspend fun updateAccentColor(accentColor: Long) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.ACCENT_COLOR] = accentColor
+        }
+    }
+
+    override suspend fun updateEditorTheme(theme: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.EDITOR_THEME] = theme
         }
     }
 }

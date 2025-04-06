@@ -67,13 +67,15 @@
     <string name="auto_save_subtitle">Automatically saves the file when making changes</string>
     <string name="save_settings">Save settings</string>
     <string name="selected">Selected</string>
+    <string name="editor_theme_section">Editor Theme</string>
+    <string name="current_theme">Current Theme: %1$s</string>
 
     <!-- File Explorer -->
     <string name="explorer_title">Explorer</string>
     <string name="close_search">Close search</string>
     <string name="search_files">Search files</string>
     <string name="refresh">Refresh</string>
-    <string name="search_files_placeholder">Search files...</string>
+    <string name="search_files_placeholder">Search files…</string>
     <string name="search_icon">Search icon</string>
     <string name="go_up">Go up</string>
     <string name="no_matching_files">No matching files</string>

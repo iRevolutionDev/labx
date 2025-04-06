@@ -143,24 +143,28 @@ fun TabBar(
                         .shadow(elevation)
                         .pointerInput(tab.file.path) {
                             detectDragGestures(
-                                onDragStart = {
-                                    draggedTabIndex = index
+                                onDragStart = { startPosition ->
+                                    if (startPosition.x > 10f) {
+                                        draggedTabIndex = index
+                                    }
                                 },
                                 onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    draggedOffset += dragAmount
+                                    if (draggedTabIndex == index) {
+                                        change.consume()
+                                        draggedOffset += dragAmount
 
-                                    val dragX = draggedOffset.x
-                                    val tabWidth = size.width
+                                        val dragX = draggedOffset.x
+                                        val tabWidth = size.width
 
-                                    if (dragX > tabWidth / 2 && index < tabs.lastIndex) {
-                                        swapTabs(index, index + 1)
-                                        draggedOffset = Offset.Zero
-                                        draggedTabIndex = index + 1
-                                    } else if (dragX < -tabWidth / 2 && index > 0) {
-                                        swapTabs(index, index - 1)
-                                        draggedOffset = Offset.Zero
-                                        draggedTabIndex = index - 1
+                                        if (dragX > tabWidth / 2 && index < tabs.lastIndex) {
+                                            swapTabs(index, index + 1)
+                                            draggedOffset = Offset.Zero
+                                            draggedTabIndex = index + 1
+                                        } else if (dragX < -tabWidth / 2 && index > 0) {
+                                            swapTabs(index, index - 1)
+                                            draggedOffset = Offset.Zero
+                                            draggedTabIndex = index - 1
+                                        }
                                     }
                                 },
                                 onDragEnd = {
@@ -209,10 +213,10 @@ private fun TabItem(
             color = backgroundColor,
             modifier = Modifier
                 .padding(end = 4.dp)
-                .clickable { onTabSelected() }
                 .pointerInput(tab.file.path) {
                     detectTapGestures(
-                        onLongPress = { showDropdown = true }
+                        onLongPress = { showDropdown = true },
+                        onTap = { onTabSelected() }
                     )
                 }
         ) {

@@ -67,6 +67,8 @@
     <string name="auto_save_subtitle">Salva o arquivo automaticamente ao fazer alterações</string>
     <string name="save_settings">Salvar configurações</string>
     <string name="selected">Selecionado</string>
+    <string name="editor_theme_section">>Tema do Editor</string>
+    <string name="current_theme">Tema atual: %1$s</string>
 
     <!-- File Explorer -->
     <string name="explorer_title">Explorador</string>

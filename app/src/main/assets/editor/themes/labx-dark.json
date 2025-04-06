@@ -1,0 +1,137 @@
+{
+  "name": "labx-dark",
+  "settings": [
+    {
+      "settings": {
+        "background": "#0f1117",
+        "foreground": "#d0d0d0",
+        "lineHighlight": "#1a1a1a",
+        "selection": "#2b3f55",
+        "highlightedDelimitersForeground": "#57f6c0"
+      }
+    },
+    {
+      "name": "Comment",
+      "scope": "comment",
+      "settings": {
+        "foreground": "#9ca3af"
+      }
+    },
+    {
+      "name": "Operator Keywords",
+      "scope": "keyword.operator,keyword.operator.logical,keyword.operator.relational,keyword.operator.assignment,keyword.operator.comparison,keyword.operator.ternary,keyword.operator.arithmetic,keyword.operator.spread",
+      "settings": {
+        "foreground": "#c792ea"
+      }
+    },
+    {
+      "name": "Types, Class Types",
+      "scope": [
+        "entity.name.type",
+        "meta.return.type",
+        "meta.type.annotation",
+        "meta.type.parameters",
+        "support.type.primitive",
+        "storage.type.primitive.java"
+      ],
+      "settings": {
+        "foreground": "#82AAFF"
+      }
+    },
+    {
+      "name": "Function",
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "meta.method-call.java",
+        "meta.method.java",
+        "meta.method.body.java"
+      ],
+      "settings": {
+        "foreground": "#ffcb6b"
+      }
+    },
+    {
+      "name": "Function Argument",
+      "scope": [
+        "variable.parameter",
+        "variable.parameter.java",
+        "meta.parameter.java"
+      ],
+      "settings": {
+        "foreground": "#f78c6c"
+      }
+    },
+    {
+      "name": "Strings",
+      "scope": "string,string.character.escape,string.template.quoted,string.template.quoted.punctuation,string.template.quoted.punctuation.single,string.template.quoted.punctuation.double,string.type.declaration.annotation,string.template.quoted.punctuation.tag",
+      "settings": {
+        "foreground": "#c3e88d"
+      }
+    },
+    {
+      "name": "Number",
+      "scope": [
+        "constant.numeric",
+        "constant.numeric.java"
+      ],
+      "settings": {
+        "foreground": "#f78c6c"
+      }
+    },
+    {
+      "name": "Class Name",
+      "scope": [
+        "entity.name.type.class",
+        "entity.name.class.java",
+        "meta.class.java"
+      ],
+      "settings": {
+        "foreground": "#82AAFF"
+      }
+    },
+    {
+      "name": "Class Inheritance",
+      "scope": [
+        "entity.other.inherited-class",
+        "meta.class.inheritance.java"
+      ],
+      "settings": {
+        "foreground": "#82AAFF"
+      }
+    },
+    {
+      "name": "Annotation",
+      "scope": [
+        "meta.annotation",
+        "meta.annotation.java"
+      ],
+      "settings": {
+        "foreground": "#c3e88d"
+      }
+    },
+    {
+      "name": "Package and Imports",
+      "scope": [
+        "meta.import",
+        "keyword.control.import.java",
+        "keyword.control.package.java",
+        "storage.modifier.import.java",
+        "support.other.namespace.use.php"
+      ],
+      "settings": {
+        "foreground": "#c792ea"
+      }
+    },
+    {
+      "name": "Static Calls",
+      "scope": [
+        "support.class.java",
+        "variable.other.constant.java"
+      ],
+      "settings": {
+        "foreground": "#ffcb6b"
+      }
+    }
+  ]
+}

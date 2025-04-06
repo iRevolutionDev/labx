@@ -29,7 +29,6 @@ import software.revolution.labx.presentation.viewmodel.FileExplorerViewModel
 import software.revolution.labx.presentation.viewmodel.PermissionViewModel
 import software.revolution.labx.presentation.viewmodel.ProjectViewModel
 import software.revolution.labx.ui.screens.IdeLayoutScreen
-import software.revolution.labx.ui.screens.MainEditorScreen
 import software.revolution.labx.ui.screens.NewProjectScreen
 import software.revolution.labx.ui.screens.SettingsScreen
 import software.revolution.labx.ui.screens.SplashScreen
@@ -174,37 +173,6 @@ fun AppNavigation(
                 navController = navController,
                 onCreateProject = { projectConfig ->
                     projectViewModel.createProject(projectConfig)
-                }
-            )
-        }
-
-        composable(
-            route = "main?path={path}",
-            arguments = listOf(
-                navArgument("path") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                    nullable = true
-                }
-            ),
-            enterTransition = {
-                slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                    animationSpec = tween(700)
-                ) + fadeIn(animationSpec = tween(700))
-            }
-        ) { backStackEntry ->
-            val path = backStackEntry.arguments?.getString("path") ?: ""
-
-            LaunchedEffect(path) {
-                if (path.isNotEmpty()) {
-                    projectViewModel.openProject(path)
-                }
-            }
-
-            MainEditorScreen(
-                onNavigateToSettings = {
-                    navController.navigate("settings")
                 }
             )
         }

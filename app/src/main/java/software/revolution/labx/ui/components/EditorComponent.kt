@@ -37,7 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -52,15 +51,18 @@ import compose.icons.fontawesomeicons.solid.Undo
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.event.SelectionChangeEvent
 import io.github.rosemoe.sora.langs.java.JavaLanguage
+import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
+import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
+import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
+import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
+import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
 import io.github.rosemoe.sora.widget.CodeEditor
-import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import io.github.rosemoe.sora.widget.subscribeEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.eclipse.tm4e.core.registry.IThemeSource
 import software.revolution.labx.R
 import software.revolution.labx.domain.model.EditorState
-import software.revolution.labx.ui.theme.BackgroundDark
-import software.revolution.labx.ui.theme.BackgroundLight
 import software.revolution.labx.ui.theme.EditorBackgroundDark
 import software.revolution.labx.ui.theme.EditorBackgroundLight
 import software.revolution.labx.ui.theme.PrimaryLight
@@ -93,6 +95,7 @@ fun EditorComponent(
     var prevWordWrap by remember { mutableStateOf(wordWrap) }
     var prevFontSize by remember { mutableFloatStateOf(fontSize) }
     var prevIsDarkTheme by remember { mutableStateOf(isDarkTheme) }
+    var prevEditorTheme by remember { mutableStateOf(editorState.theme) }
 
     val currentFile = remember(editorState.currentFile?.path) { editorState.currentFile }
 
@@ -194,9 +197,9 @@ fun EditorComponent(
                     createEditorView(
                         ctx,
                         stableContent,
-                        isDarkTheme,
                         fontSize,
-                        editorState.language
+                        editorState.language,
+                        editorState.theme
                     ).also { newEditor ->
                         editor = newEditor
 
@@ -250,9 +253,10 @@ fun EditorComponent(
                         prevFontSize = fontSize
                     }
 
-                    if (prevIsDarkTheme != isDarkTheme) {
-                        applyTheme(view, isDarkTheme)
+                    if (prevIsDarkTheme != isDarkTheme || prevEditorTheme != editorState.theme) {
+                        applyTheme(view.context, view, editorState.theme)
                         prevIsDarkTheme = isDarkTheme
+                        prevEditorTheme = editorState.theme
                     }
 
                     if (view.tag != editorState.currentFile?.path && editorState.currentFile != null) {
@@ -441,9 +445,9 @@ private fun EditorStatusBar(
 private fun createEditorView(
     context: Context,
     initialText: String,
-    isDarkTheme: Boolean,
     fontSize: Float = 14f,
-    fileLanguage: String? = null
+    fileLanguage: String? = null,
+    theme: String? = null
 ): CodeEditor {
     val editor = CodeEditor(context)
 
@@ -452,7 +456,9 @@ private fun createEditorView(
         ViewGroup.LayoutParams.MATCH_PARENT
     )
 
-    applyTheme(editor, isDarkTheme)
+    loadThemes(context)
+
+    applyTheme(context, editor, theme)
     editor.setText(initialText)
 
     val language = when (fileLanguage?.lowercase()) {
@@ -471,30 +477,72 @@ private fun createEditorView(
     return editor
 }
 
-private fun applyTheme(editor: CodeEditor, isDarkTheme: Boolean) {
-    val scheme = if (isDarkTheme) {
-        EditorColorScheme().apply {
-            setColor(EditorColorScheme.WHOLE_BACKGROUND, EditorBackgroundDark.toArgb())
-            setColor(EditorColorScheme.TEXT_NORMAL, Color.White.toArgb())
-            setColor(EditorColorScheme.LINE_NUMBER_BACKGROUND, SurfaceDark.toArgb())
-            setColor(EditorColorScheme.LINE_NUMBER, Color.LightGray.toArgb())
-            setColor(EditorColorScheme.LINE_DIVIDER, Color.DarkGray.toArgb())
-            setColor(EditorColorScheme.SELECTION_INSERT, PrimaryLight.toArgb())
-            setColor(EditorColorScheme.SELECTION_HANDLE, PrimaryLight.toArgb())
-            setColor(EditorColorScheme.CURRENT_LINE, BackgroundDark.copy(alpha = 0.3f).toArgb())
+private fun loadThemes(context: Context) {
+    FileProviderRegistry.getInstance().addFileProvider(
+        AssetsFileResolver(
+            context.assets
+        )
+    )
+
+    val themeRegistry = ThemeRegistry.getInstance()
+
+    try {
+        val availableThemes = context.assets.list("editor/themes")?.filter {
+            it.endsWith(".json")
+        }?.mapNotNull {
+            it.substringBeforeLast(".json")
+        } ?: listOf("darcula", "light")
+
+        for (availableTheme in availableThemes) {
+            val themePath = "editor/themes/${availableTheme}.json"
+            try {
+                themeRegistry.loadTheme(
+                    ThemeModel(
+                        IThemeSource.fromInputStream(
+                            FileProviderRegistry.getInstance().tryGetInputStream(themePath),
+                            themePath,
+                            null
+                        ),
+                        availableTheme
+                    )
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
-    } else {
-        EditorColorScheme().apply {
-            setColor(EditorColorScheme.WHOLE_BACKGROUND, EditorBackgroundLight.toArgb())
-            setColor(EditorColorScheme.TEXT_NORMAL, Color.Black.toArgb())
-            setColor(EditorColorScheme.LINE_NUMBER_BACKGROUND, SurfaceLight.toArgb())
-            setColor(EditorColorScheme.LINE_NUMBER, Color.DarkGray.toArgb())
-            setColor(EditorColorScheme.LINE_DIVIDER, Color.LightGray.toArgb())
-            setColor(EditorColorScheme.SELECTION_INSERT, PrimaryLight.toArgb())
-            setColor(EditorColorScheme.SELECTION_HANDLE, PrimaryLight.toArgb())
-            setColor(EditorColorScheme.CURRENT_LINE, BackgroundLight.copy(alpha = 0.3f).toArgb())
+    } catch (e: Exception) {
+        e.printStackTrace()
+
+        try {
+            val darculaPath = "editor/themes/darcula.json"
+            themeRegistry.loadTheme(
+                ThemeModel(
+                    IThemeSource.fromInputStream(
+                        FileProviderRegistry.getInstance().tryGetInputStream(darculaPath),
+                        darculaPath,
+                        null
+                    ),
+                    "darcula"
+                )
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
+}
 
-    editor.colorScheme = scheme
+private fun applyTheme(context: Context, editor: CodeEditor, theme: String? = "darcula") {
+    try {
+        loadThemes(context)
+
+        val themeRegistry = ThemeRegistry.getInstance()
+        val themeName = theme ?: "darcula"
+
+        themeRegistry.setTheme(themeName)
+
+        val editorColorScheme = TextMateColorScheme.create(themeRegistry)
+        editor.colorScheme = editorColorScheme
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 }

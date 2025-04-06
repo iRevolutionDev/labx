@@ -7,5 +7,6 @@ data class EditorState(
     val language: String = "",
     val cursorPosition: Int = 0,
     val selectionStart: Int = 0,
-    val selectionEnd: Int = 0
+    val selectionEnd: Int = 0,
+    val theme: String = "darcula"
 )

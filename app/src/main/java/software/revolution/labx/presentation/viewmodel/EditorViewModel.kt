@@ -45,6 +45,7 @@ class EditorViewModel @Inject constructor(
         viewModelScope.launch {
             editorPreferencesRepository.editorPreferences.collectLatest { preferences ->
                 _editorPreferences.value = preferences
+                _editorState.update { it.copy(theme = preferences.editorTheme) }
             }
         }
     }
@@ -195,6 +196,21 @@ class EditorViewModel @Inject constructor(
                 editorPreferencesRepository.updateWordWrap(wordWrap)
                 editorPreferencesRepository.updateAutoSave(autoSave)
                 editorPreferencesRepository.updateAccentColor(accentColor.value.toLong())
+            }
+        }
+    }
+
+    fun updateEditorTheme(theme: String) {
+        viewModelScope.launch {
+            _editorState.update { it.copy(theme = theme) }
+            editorPreferencesRepository.updateEditorTheme(theme)
+        }
+    }
+    
+    fun applyThemeFromPreferences() {
+        viewModelScope.launch {
+            editorPreferencesRepository.editorPreferences.collectLatest { preferences ->
+                _editorState.update { it.copy(theme = preferences.editorTheme) }
             }
         }
     }
