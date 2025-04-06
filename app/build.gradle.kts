@@ -41,6 +41,13 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/io.netty.versions.properties"
+        }
+    }
 }
 
 dependencies {
@@ -51,6 +58,11 @@ dependencies {
     implementation(libs.language.textmate)
     implementation(libs.language.java)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
+    
+    // LSP4J dependencies
+    implementation(libs.lsp4j.core)
+    implementation(libs.lsp4j.jsonrpc)
+    implementation(libs.lsp4j.debug)
 
     // TOML parser
     implementation(libs.ktoml.core)

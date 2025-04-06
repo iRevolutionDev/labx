@@ -1,6 +1,7 @@
 package software.revolution.labx.ui.components
 
 import android.content.Context
+import android.content.Intent
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -58,22 +60,37 @@ import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.dsl.languages
 import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
+import io.github.rosemoe.sora.lsp.client.connection.SocketStreamConnectionProvider
+import io.github.rosemoe.sora.lsp.client.languageserver.serverdefinition.CustomLanguageServerDefinition
+import io.github.rosemoe.sora.lsp.client.languageserver.wrapper.EventHandler
+import io.github.rosemoe.sora.lsp.editor.LspEditor
+import io.github.rosemoe.sora.lsp.editor.LspProject
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.subscribeEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams
+import org.eclipse.lsp4j.InitializeResult
+import org.eclipse.lsp4j.WorkspaceFolder
+import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent
+import org.eclipse.lsp4j.services.LanguageServer
 import org.eclipse.tm4e.core.registry.IThemeSource
 import software.revolution.labx.R
 import software.revolution.labx.domain.model.EditorState
+import software.revolution.labx.domain.model.Project
+import software.revolution.labx.service.LanguageServerService
 import software.revolution.labx.ui.theme.EditorBackgroundDark
 import software.revolution.labx.ui.theme.EditorBackgroundLight
 import software.revolution.labx.ui.theme.PrimaryLight
 import software.revolution.labx.ui.theme.SurfaceDark
 import software.revolution.labx.ui.theme.SurfaceLight
+import kotlin.random.Random
 
 @Composable
 fun EditorComponent(
     editorState: EditorState,
+    project: Project?,
     onEditorStateChange: (EditorState) -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier,
@@ -86,12 +103,16 @@ fun EditorComponent(
 
     var editor by remember { mutableStateOf<CodeEditor?>(null) }
 
+    var lspEditor by remember { mutableStateOf<LspEditor?>(null) }
+    var lspProject by remember { mutableStateOf<LspProject?>(null) }
+
     var stableContent by remember(editorState.currentFile?.path) {
         mutableStateOf(editorState.content)
     }
 
     var cursorPosition by rememberSaveable { mutableStateOf("Line: 1, Col: 1") }
     var wordCount by rememberSaveable { mutableIntStateOf(0) }
+    var isFormatting by remember { mutableStateOf(false) }
 
     var prevLineNumbers by remember { mutableStateOf(showLineNumbers) }
     var prevWordWrap by remember { mutableStateOf(wordWrap) }
@@ -105,6 +126,15 @@ fun EditorComponent(
         derivedStateOf { currentFile?.extension?.uppercase() ?: "TXT" }
     }
 
+    var isConnectingToLsp by remember { mutableStateOf(false) }
+    var lspConnected by remember { mutableStateOf(false) }
+
+    val randomPort = remember {
+        { Random.nextInt(10000, 65000) }
+    }
+
+    val context = LocalContext.current
+
     LaunchedEffect(stableContent) {
         if (stableContent.isNotEmpty()) {
             wordCount = stableContent.split(Regex("\\s+")).count { it.isNotEmpty() }
@@ -115,15 +145,46 @@ fun EditorComponent(
         editor?.let { currentEditor ->
             val languageScopeName = when (currentFile?.extension?.lowercase()) {
                 "java" -> "source.java"
-                "kotlin" -> "source.kotlin"
-                else -> "text.plain"
+                else -> null
             }
 
-            val language = TextMateLanguage.create(
-                languageScopeName, true
-            )
+            if (languageScopeName != null) {
+                val language = TextMateLanguage.create(
+                    languageScopeName, true
+                )
 
-            editor?.setEditorLanguage(language)
+                currentEditor.setEditorLanguage(language)
+            }
+        }
+    }
+
+    LaunchedEffect(currentFile?.path) {
+        if (currentFile != null && editor != null && !lspConnected && !isConnectingToLsp) {
+            val extension = currentFile.extension.lowercase()
+            val supportedLanguage = when (extension) {
+                "java" -> "java"
+                "kt", "kts" -> "kotlin"
+                else -> null
+            }
+
+            if (supportedLanguage != null) {
+                isConnectingToLsp = true
+                try {
+                    connectToLanguageServer(
+                        context,
+                        project,
+                        currentFile.path,
+                        editor!!,
+                        supportedLanguage,
+                        randomPort()
+                    )
+                    lspConnected = true
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    isConnectingToLsp = false
+                }
+            }
         }
     }
 
@@ -167,6 +228,13 @@ fun EditorComponent(
         }
     }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            lspEditor?.dispose()
+            lspProject?.dispose()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -188,10 +256,19 @@ fun EditorComponent(
                 },
                 onUndo = { editor?.undo() },
                 onRedo = { editor?.redo() },
+                onFormat = {
+                    if (currentFile != null && !isFormatting) {
+                        coroutineScope.launch {
+                            isFormatting = true
+                            editor?.indentSelection()
+                        }
+                    }
+                },
                 canUndo = editor?.canUndo() == true,
                 canRedo = editor?.canRedo() == true,
                 isModified = editorState.isModified,
-                isDarkTheme = isDarkTheme
+                isDarkTheme = isDarkTheme,
+                isFormatting = isFormatting
             )
         }
 
@@ -216,15 +293,14 @@ fun EditorComponent(
                             wordCount = content.split(Regex("\\s+")).count { it.isNotEmpty() }
 
                             coroutineScope.launch(Dispatchers.Main) {
-                                onEditorStateChange(
-                                    editorState.copy(
-                                        content = content.toString(),
-                                        isModified = true,
-                                        cursorPosition = newEditor.cursor.leftLine * 100 + newEditor.cursor.leftColumn,
-                                        selectionStart = newEditor.cursor.left,
-                                        selectionEnd = newEditor.cursor.right
-                                    )
+                                val newState = editorState.copy(
+                                    content = content.toString(),
+                                    isModified = true,
+                                    cursorPosition = newEditor.cursor.leftLine * 100 + newEditor.cursor.leftColumn,
+                                    selectionStart = newEditor.cursor.left,
+                                    selectionEnd = newEditor.cursor.right
                                 )
+                                onEditorStateChange(newState)
                             }
                         }
 
@@ -282,6 +358,8 @@ fun EditorComponent(
 
                 onRelease = {
                     editor?.release()
+                    lspEditor?.dispose()
+                    lspProject?.dispose()
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -303,6 +381,18 @@ fun EditorComponent(
                     )
                 }
             }
+
+            if (isFormatting) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        color = PrimaryLight
+                    )
+                }
+            }
         }
 
         EditorStatusBar(
@@ -319,10 +409,12 @@ private fun EditorToolbar(
     onSave: () -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
+    onFormat: () -> Unit,
     canUndo: Boolean,
     canRedo: Boolean,
     isModified: Boolean,
-    isDarkTheme: Boolean
+    isDarkTheme: Boolean,
+    isFormatting: Boolean = false
 ) {
     Surface(
         color = if (isDarkTheme) SurfaceDark else SurfaceLight,
@@ -392,12 +484,24 @@ private fun EditorToolbar(
                 color = if (isDarkTheme) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
             )
 
-            IconButton(onClick = { }) {
-                Icon(
-                    imageVector = FontAwesomeIcons.Solid.Indent,
-                    contentDescription = stringResource(R.string.format_code),
-                    modifier = Modifier.size(20.dp)
-                )
+            IconButton(
+                onClick = onFormat,
+                enabled = !isFormatting
+            ) {
+                if (isFormatting) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = if (isDarkTheme) Color.White else Color.Black,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = FontAwesomeIcons.Solid.Indent,
+                        contentDescription = stringResource(R.string.format_code),
+                        modifier = Modifier.size(20.dp),
+                        tint = if (isDarkTheme) Color.White else Color.Black
+                    )
+                }
             }
 
             IconButton(onClick = { }) {
@@ -471,14 +575,16 @@ private fun createEditorView(
 
     val languageScopeName = when (fileLanguage?.lowercase()) {
         "java" -> "source.java"
-        "kotlin" -> "source.kotlin"
-        else -> "text.plain"
+//        "kotlin" -> "source.kotlin"
+        else -> null
     }
-    val language = TextMateLanguage.create(
-        languageScopeName, true
-    )
 
-    editor.setEditorLanguage(language)
+    if (languageScopeName != null) {
+        val language = TextMateLanguage.create(
+            languageScopeName, true
+        )
+        editor.setEditorLanguage(language)
+    }
 
     editor.isWordwrap = true
     editor.nonPrintablePaintingFlags = 0
@@ -487,6 +593,110 @@ private fun createEditorView(
     editor.setLineSpacing(2f, 1.2f)
 
     return editor
+}
+
+/**
+ * Connect to a language server for enhanced code editing features
+ *
+ * @param context Android context for service operations
+ * @param filePath Path to the current file being edited
+ * @param editor The CodeEditor instance
+ * @param language Language identifier (e.g. "java", "kotlin")
+ * @param port Port to use for the language server connection
+ */
+private suspend fun connectToLanguageServer(
+    context: Context,
+    project: Project?,
+    filePath: String,
+    editor: CodeEditor,
+    language: String,
+    port: Int
+) = withContext(Dispatchers.IO) {
+    if (project == null) {
+        return@withContext
+    }
+
+    withContext(Dispatchers.Main) {
+        editor.isEditable = false
+    }
+
+    val projectPath = project.path
+
+    val serverType = when (language) {
+        "java" -> LanguageServerService.SERVER_TYPE_JAVA
+        "kotlin" -> LanguageServerService.SERVER_TYPE_KOTLIN
+        else -> null
+    }
+
+    if (serverType != null) {
+        val intent = Intent(context, LanguageServerService::class.java).apply {
+            putExtra("server_type", serverType)
+            putExtra("port", port)
+        }
+        context.startService(intent)
+    } else {
+        return@withContext
+    }
+
+    val serverDefinition = object : CustomLanguageServerDefinition(
+        language,
+        ServerConnectProvider {
+            SocketStreamConnectionProvider(port)
+        }
+    ) {
+        private val _eventListener = object : EventHandler.EventListener {
+            override fun initialize(server: LanguageServer?, result: InitializeResult) {
+                super.initialize(server, result)
+            }
+        }
+
+        override val eventListener: EventHandler.EventListener
+            get() = _eventListener
+    }
+
+    val lspProject = LspProject(projectPath)
+    lspProject.addServerDefinition(serverDefinition)
+
+    val lspEditor = lspProject.createEditor(filePath)
+
+    val wrapperLanguage = when (language) {
+        "java" -> TextMateLanguage.create("source.java", true)
+        "kotlin" -> TextMateLanguage.create("source.kotlin", true)
+        else -> null
+    }
+
+    wrapperLanguage?.let {
+        withContext(Dispatchers.Main) {
+            lspEditor.wrapperLanguage = it
+            lspEditor.editor = editor
+        }
+    }
+
+    var connected = false
+    try {
+        lspEditor.connectWithTimeout()
+
+        lspEditor.requestManager?.didChangeWorkspaceFolders(
+            DidChangeWorkspaceFoldersParams().apply {
+                this.event = WorkspaceFoldersChangeEvent().apply {
+                    added = listOf(
+                        WorkspaceFolder(
+                            "file://$projectPath",
+                            project.name
+                        )
+                    )
+                }
+            }
+        )
+
+        connected = true
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+
+    withContext(Dispatchers.Main) {
+        editor.isEditable = true
+    }
 }
 
 private fun loadThemes(context: Context) {

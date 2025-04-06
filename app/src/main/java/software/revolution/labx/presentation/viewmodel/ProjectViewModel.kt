@@ -27,6 +27,9 @@ class ProjectViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
+    private val _project = MutableStateFlow<Project?>(null)
+    val project: StateFlow<Project?> = _project.asStateFlow()
+
     private val _recentProjects = MutableStateFlow<List<Project>>(emptyList())
     val recentProjects: StateFlow<List<Project>> = _recentProjects.asStateFlow()
 
@@ -93,6 +96,7 @@ class ProjectViewModel @Inject constructor(
                     ?.sortedByDescending { it.lastOpenedDate } ?: emptyList()
 
                 _recentProjects.value = projects
+                _project.value = projects.firstOrNull()
             } catch (e: Exception) {
                 _error.value = "Failed to load projects: ${e.localizedMessage}"
             } finally {

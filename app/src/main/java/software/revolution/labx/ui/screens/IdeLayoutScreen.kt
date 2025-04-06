@@ -111,6 +111,8 @@ fun IdeLayoutScreen(
     val fileExplorerLoading by fileExplorerViewModel.isLoading.collectAsStateWithLifecycle()
     val currentDirectory by fileExplorerViewModel.currentDirectory.collectAsStateWithLifecycle()
 
+    val project by projectViewModel.project.collectAsStateWithLifecycle()
+
     var sidebarOpen by rememberSaveable { mutableStateOf(true) }
     var currentProject by rememberSaveable { mutableStateOf("MyProject") }
     var bottomPanelOpen by rememberSaveable { mutableStateOf(false) }
@@ -528,6 +530,7 @@ fun IdeLayoutScreen(
 
                             EditorComponent(
                                 editorState = editorState,
+                                project = project,
                                 onEditorStateChange = { newState ->
                                     editorViewModel.updateContent(newState.content)
 
@@ -562,7 +565,7 @@ fun IdeLayoutScreen(
                                 isDarkTheme = isDarkTheme,
                                 modifier = Modifier.weight(1f),
                                 showLineNumbers = preferences.showLineNumbers,
-                                showToolbar = !isCompactWidth
+                                showToolbar = !isCompactWidth,
                             )
 
                             Box(
@@ -708,11 +711,16 @@ fun IdeLayoutScreen(
                                 }
                             }
                         } else {
-                            Text(
-                                text = "Kotlin 1.8.0",
-                                color = if (isDarkTheme) Color(0xFFD4B2FF) else Color(0xFF7C3AED),
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Kotlin 1.8.0",
+                                    color = if (isDarkTheme) Color(0xFFD4B2FF) else Color(0xFF7C3AED),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
 
                             IconButton(
                                 onClick = { bottomPanelOpen = !bottomPanelOpen },

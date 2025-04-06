@@ -14,11 +14,14 @@ navigationCompose = "2.8.9"
 composeIcons = "1.1.1"
 hilt = "2.51.1"
 hiltNavCompose = "1.2.0"
+orgEclipseJdtCore = "3.33.0"
+orgEclipseJdtLsCore = "1.20.0"
 room = "2.6.1"
 datastore = "1.1.4"
 coroutines = "1.10.1"
 lifecycleCompose = "2.8.7"
 ktoml = "0.6.0"
+lsp4j = "0.21.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,6 +45,12 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 language-java = { module = "io.github.Rosemoe.sora-editor:language-java" }
 language-textmate = { module = "io.github.Rosemoe.sora-editor:language-textmate" }
+
+# LSP4J
+lsp4j-core = { group = "org.eclipse.lsp4j", name = "org.eclipse.lsp4j", version.ref = "lsp4j" }
+lsp4j-jsonrpc = { group = "org.eclipse.lsp4j", name = "org.eclipse.lsp4j.jsonrpc", version.ref = "lsp4j" }
+lsp4j-debug = { group = "org.eclipse.lsp4j", name = "org.eclipse.lsp4j.debug", version.ref = "lsp4j" }
+lsp4j-generator = { group = "org.eclipse.lsp4j", name = "org.eclipse.lsp4j.generator", version.ref = "lsp4j" }
 
 # MVVM
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleCompose" }
@@ -77,6 +86,8 @@ composeIcons-linea = { module = "br.com.devsrsouza.compose.icons:linea", version
 composeIcons-octicons = { module = "br.com.devsrsouza.compose.icons:octicons", version.ref = "composeIcons" }
 composeIcons-simpleIcons = { module = "br.com.devsrsouza.compose.icons:simple-icons", version.ref = "composeIcons" }
 composeIcons-tablerIcons = { module = "br.com.devsrsouza.compose.icons:tabler-icons", version.ref = "composeIcons" }
+org-eclipse-jdt-core = { module = "org.eclipse.jdt:org.eclipse.jdt.core", version.ref = "orgEclipseJdtCore" }
+org-eclipse-jdt-ls-core = { module = "org.eclipse.jdt.ls:org.eclipse.jdt.ls.core", version.ref = "orgEclipseJdtLsCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
