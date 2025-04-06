@@ -58,6 +58,7 @@ import compose.icons.tablericons.Code
 import compose.icons.tablericons.Copy
 import compose.icons.tablericons.LayoutColumns
 import kotlinx.coroutines.launch
+import software.revolution.labx.domain.model.EditorTab
 import software.revolution.labx.ui.theme.EditorBackgroundDark
 import software.revolution.labx.ui.theme.EditorBackgroundLight
 import kotlin.math.roundToInt

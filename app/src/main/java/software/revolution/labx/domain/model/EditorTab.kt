@@ -1,6 +1,4 @@
-package software.revolution.labx.ui.components
-
-import software.revolution.labx.domain.model.FileItem
+package software.revolution.labx.domain.model
 
 data class EditorTab(
     val file: FileItem,
