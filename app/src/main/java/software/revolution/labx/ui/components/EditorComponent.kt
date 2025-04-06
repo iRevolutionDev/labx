@@ -254,7 +254,7 @@ fun EditorComponent(
                     }
 
                     if (prevIsDarkTheme != isDarkTheme || prevEditorTheme != editorState.theme) {
-                        applyTheme(view.context, view, editorState.theme)
+                        applyTheme(view, editorState.theme)
                         prevIsDarkTheme = isDarkTheme
                         prevEditorTheme = editorState.theme
                     }
@@ -458,7 +458,7 @@ private fun createEditorView(
 
     loadThemes(context)
 
-    applyTheme(context, editor, theme)
+    applyTheme(editor, theme)
     editor.setText(initialText)
 
     val language = when (fileLanguage?.lowercase()) {
@@ -531,10 +531,8 @@ private fun loadThemes(context: Context) {
     }
 }
 
-private fun applyTheme(context: Context, editor: CodeEditor, theme: String? = "darcula") {
+private fun applyTheme(editor: CodeEditor, theme: String? = "darcula") {
     try {
-        loadThemes(context)
-
         val themeRegistry = ThemeRegistry.getInstance()
         val themeName = theme ?: "darcula"
 

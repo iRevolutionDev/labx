@@ -75,13 +75,13 @@ import compose.icons.fontawesomeicons.solid.FolderPlus
 import compose.icons.fontawesomeicons.solid.Save
 import compose.icons.tablericons.ChevronRight
 import kotlinx.coroutines.launch
+import software.revolution.labx.domain.model.EditorTab
 import software.revolution.labx.domain.model.FileItem
 import software.revolution.labx.domain.model.OutputType
 import software.revolution.labx.presentation.viewmodel.EditorViewModel
 import software.revolution.labx.presentation.viewmodel.FileExplorerViewModel
 import software.revolution.labx.presentation.viewmodel.ProjectViewModel
 import software.revolution.labx.ui.components.EditorComponent
-import software.revolution.labx.ui.components.EditorTab
 import software.revolution.labx.ui.components.FileExplorer
 import software.revolution.labx.ui.components.GlassCard
 import software.revolution.labx.ui.components.OutputPanel
