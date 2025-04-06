@@ -267,6 +267,10 @@ fun EditorComponent(
                         }
                     }
                 },
+
+                onRelease = {
+                    editor?.release()
+                },
                 modifier = Modifier.fillMaxSize()
             )
 
