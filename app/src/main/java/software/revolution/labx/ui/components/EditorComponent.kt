@@ -145,6 +145,7 @@ fun EditorComponent(
         editor?.let { currentEditor ->
             val languageScopeName = when (currentFile?.extension?.lowercase()) {
                 "java" -> "source.java"
+                "kotlin" -> "source.kotlin"
                 else -> null
             }
 
@@ -575,7 +576,7 @@ private fun createEditorView(
 
     val languageScopeName = when (fileLanguage?.lowercase()) {
         "java" -> "source.java"
-//        "kotlin" -> "source.kotlin"
+        "kotlin" -> "source.gradle-kotlin-dsl"
         else -> null
     }
 
@@ -628,6 +629,12 @@ private suspend fun connectToLanguageServer(
         else -> null
     }
 
+    val fileType = when (language) {
+        "java" -> "java"
+        "kotlin" -> "kt"
+        else -> "plain"
+    }
+
     if (serverType != null) {
         val intent = Intent(context, LanguageServerService::class.java).apply {
             putExtra("server_type", serverType)
@@ -639,7 +646,7 @@ private suspend fun connectToLanguageServer(
     }
 
     val serverDefinition = object : CustomLanguageServerDefinition(
-        language,
+        fileType,
         ServerConnectProvider {
             SocketStreamConnectionProvider(port)
         }
@@ -661,7 +668,7 @@ private suspend fun connectToLanguageServer(
 
     val wrapperLanguage = when (language) {
         "java" -> TextMateLanguage.create("source.java", true)
-        "kotlin" -> TextMateLanguage.create("source.kotlin", true)
+        "kotlin" -> TextMateLanguage.create("source.gradle-kotlin-dsl", true)
         else -> null
     }
 
@@ -766,6 +773,11 @@ private fun applyTheme(editor: CodeEditor, theme: String? = "darcula") {
                     grammar = "editor/textmate/java/syntaxes/java.tmLanguage.json"
                     defaultScopeName()
                     languageConfiguration = "editor/textmate/java/language-configuration.json"
+                }
+                language("gradle-kotlin-dsl") {
+                    grammar = "editor/textmate/kotlin/syntaxes/kotlin.tmLanguage.json"
+                    defaultScopeName()
+                    languageConfiguration = "editor/textmate/kotlin/language-configuration.json"
                 }
             }
         )
